@@ -153,30 +153,14 @@ class ForgeAgent:
             )
 
     def _get_skill_paths(self, ticket_key: str | None = None) -> list[str]:
-        """Get skill source paths for this invocation.
+        """Return ordered skill source paths for Deep Agents.
 
-        If a ticket_key is provided, uses the resolver to return per-project
-        paths with fallback to skills/default/. Otherwise falls back to
-        the agent_skill_paths setting.
+        Resolves per-project skill overrides under settings.skills_dir, with
+        fallback to skills/default/ for any skill not overridden by the project.
         """
-        if ticket_key:
-            skills_dir = PROJECT_ROOT / "skills"
-            paths = resolve_skill_paths(ticket_key, skills_dir)
-            logger.debug(f"Using skill paths (resolver): {paths}")
-            return paths
-
-        paths = []
-        for path in self.settings.agent_skill_paths.split(","):
-            path = path.strip()
-            if path:
-                if not path.endswith("/"):
-                    path = f"{path}/"
-                paths.append(path)
-
-        if not paths:
-            paths = ["skills/default/"]
-
-        logger.debug(f"Using skill paths (settings): {paths}")
+        skills_dir = PROJECT_ROOT / self.settings.skills_dir.rstrip("/")
+        paths = resolve_skill_paths(ticket_key or "", skills_dir)
+        logger.debug(f"Using skill paths: {paths}")
         return paths
 
     def _get_allowed_tools(self) -> list[str] | None:

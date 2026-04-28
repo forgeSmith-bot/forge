@@ -1,6 +1,6 @@
 """Unit tests for ForgeAgent."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -85,12 +85,15 @@ def test_get_skill_paths_uses_resolver_when_ticket_key_given():
     assert result == ["skills/default/", "skills/proj/"]
 
 
-def test_get_skill_paths_falls_back_to_settings_without_ticket_key():
-    """When ticket_key is None, settings-based path is returned."""
+def test_get_skill_paths_returns_default_without_ticket_key():
+    """When ticket_key is None, resolver returns skills/default/ only."""
     agent = ForgeAgent.__new__(ForgeAgent)
     agent.settings = MagicMock()
-    agent.settings.agent_skill_paths = "skills/default/"
+    agent.settings.skills_dir = "skills/"
 
-    result = agent._get_skill_paths(None)
+    with patch("forge.integrations.agents.agent.resolve_skill_paths") as mock_resolver:
+        mock_resolver.return_value = ["skills/default/"]
+        result = agent._get_skill_paths(None)
 
+    mock_resolver.assert_called_once_with("", ANY)
     assert result == ["skills/default/"]

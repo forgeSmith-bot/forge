@@ -19,7 +19,6 @@ import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
 
 from forge.config import Settings, get_settings
 from forge.prompts import load_prompt
@@ -180,27 +179,18 @@ class ContainerRunner:
     ) -> tuple[list[tuple[Path, str]], str]:
         """Get skill directory mounts and container paths.
 
-        If ticket_key is provided, uses the resolver to determine skill paths.
-        Falls back to settings.container_skill_paths if set.
+        Resolves skill directories via the resolver using settings.skills_dir as
+        the base, with per-project overrides and fallback to skills/default/.
 
         Returns:
             Tuple of (mounts, container_paths) where:
             - mounts: List of (host_path, container_path) tuples
             - container_paths: Comma-separated paths for AGENT_SKILL_PATHS env var
         """
-        if ticket_key:
-            skills_dir = Path.cwd() / "skills"
-            host_paths = [
-                Path(p.rstrip("/")) for p in resolve_skill_paths(ticket_key, skills_dir)
-            ]
-        elif self.settings.container_skill_paths:
-            host_paths = [
-                Path(p.strip())
-                for p in self.settings.container_skill_paths.split(",")
-                if p.strip()
-            ]
-        else:
-            return cast("list[tuple[Path, str]]", []), ""
+        skills_dir = Path.cwd() / self.settings.skills_dir.rstrip("/")
+        host_paths = [
+            Path(p.rstrip("/")) for p in resolve_skill_paths(ticket_key or "", skills_dir)
+        ]
 
         mounts = []
         container_paths = []
