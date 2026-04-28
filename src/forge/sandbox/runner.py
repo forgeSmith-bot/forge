@@ -19,6 +19,7 @@ import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 from forge.config import Settings, get_settings
 from forge.prompts import load_prompt
@@ -199,7 +200,7 @@ class ContainerRunner:
                 if p.strip()
             ]
         else:
-            return [], ""
+            return cast("list[tuple[Path, str]]", []), ""
 
         mounts = []
         container_paths = []
