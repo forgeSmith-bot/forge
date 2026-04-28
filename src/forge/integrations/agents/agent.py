@@ -33,6 +33,7 @@ except ImportError:
 from forge.config import Settings, get_settings
 from forge.integrations.langfuse import get_langfuse_config, get_langfuse_context
 from forge.prompts import load_prompt, set_default_version
+from forge.skills.resolver import resolve_skill_paths
 
 # Optional Vertex AI support (Claude and Gemini)
 try:
@@ -151,25 +152,14 @@ class ForgeAgent:
                 max_tokens=self.settings.llm_max_tokens,
             )
 
-    def _get_skill_paths(self) -> list[str]:
-        """Get configured skill paths.
+    def _get_skill_paths(self, ticket_key: str | None = None) -> list[str]:
+        """Return ordered skill source paths for Deep Agents.
 
-        Returns:
-            List of skill directory paths (with trailing slashes).
+        Resolves per-project skill overrides under settings.skills_dir, with
+        fallback to skills/default/ for any skill not overridden by the project.
         """
-        paths = []
-        for path in self.settings.agent_skill_paths.split(","):
-            path = path.strip()
-            if path:
-                # Ensure trailing slash for directory paths
-                if not path.endswith("/"):
-                    path = f"{path}/"
-                paths.append(path)
-
-        if not paths:
-            # Default to plugin skills directory
-            paths = ["plugins/forge-sdlc/skills/"]
-
+        skills_dir = PROJECT_ROOT / self.settings.skills_dir.rstrip("/")
+        paths = resolve_skill_paths(ticket_key or "", skills_dir)
         logger.debug(f"Using skill paths: {paths}")
         return paths
 
@@ -373,18 +363,20 @@ class ForgeAgent:
         self,
         system_prompt: str,
         include_tools: bool = True,
+        ticket_key: str | None = None,
     ) -> Any:
         """Create a Deep Agent instance with configured skills and MCP tools.
 
         Args:
             system_prompt: System prompt for the agent.
             include_tools: Whether to include file/search tools.
+            ticket_key: Optional ticket key for per-project skill resolution.
 
         Returns:
             Configured Deep Agent.
         """
         root_dir = self._get_root_dir()
-        skill_paths = self._get_skill_paths()
+        skill_paths = self._get_skill_paths(ticket_key)
 
         # Log configuration for visibility
         logger.info(f"Agent config: root_dir={root_dir}, skills={skill_paths}")
@@ -415,47 +407,6 @@ class ForgeAgent:
             system_prompt=system_prompt,
             checkpointer=self._checkpointer,
             tools=mcp_tools if mcp_tools else None,
-        )
-
-        return agent
-
-    def _create_agent(
-        self,
-        system_prompt: str,
-    ) -> Any:
-        """Create a Deep Agent instance (sync wrapper).
-
-        For MCP tools, use _create_agent_async instead.
-        This sync version does not load MCP tools.
-
-        Args:
-            system_prompt: System prompt for the agent.
-
-        Returns:
-            Configured Deep Agent.
-        """
-        root_dir = self._get_root_dir()
-        skill_paths = self._get_skill_paths()
-        mcp_config = self._load_mcp_config()
-
-        # Log configuration for visibility
-        logger.info(f"Agent config: root_dir={root_dir}, skills={skill_paths}")
-        logger.info(
-            f"Agent MCP servers: {list(mcp_config.keys())} (sync - no tools loaded)")
-
-        # Create filesystem backend
-        backend = FilesystemBackend(root_dir=str(root_dir))
-
-        # Create the model (supports both direct API and Vertex AI)
-        model = self._create_model()
-
-        # Create the agent (MCP tools loaded in async version)
-        agent = create_deep_agent(
-            model=model,
-            backend=backend,
-            skills=skill_paths,
-            system_prompt=system_prompt,
-            checkpointer=self._checkpointer,
         )
 
         return agent
@@ -571,6 +522,7 @@ class ForgeAgent:
         include_tools: bool = True,
         session_id: str | None = None,
         trace_name: str | None = None,
+        ticket_key: str | None = None,
     ) -> str:
         """Run the agent with the given prompt.
 
@@ -582,6 +534,7 @@ class ForgeAgent:
             include_tools: Whether to include tools.
             session_id: Optional session ID for Langfuse (e.g., ticket key).
             trace_name: Optional trace name for Langfuse.
+            ticket_key: Optional ticket key for per-project skill resolution.
 
         Returns:
             Agent response text.
@@ -590,6 +543,7 @@ class ForgeAgent:
         agent = await self._create_agent_async(
             system_prompt=system_prompt,
             include_tools=include_tools,
+            ticket_key=ticket_key,
         )
 
         # Generate unique thread ID for this conversation
@@ -711,6 +665,7 @@ class ForgeAgent:
         ticket_key = context.get("ticket_key") if context else None
 
         import time
+
         from forge.api.routes.metrics import observe_agent_duration, record_agent_invocation
 
         logger.info(f"Running task '{task}' using Deep Agents")
@@ -722,6 +677,7 @@ class ForgeAgent:
             include_tools=include_tools,
             session_id=ticket_key,
             trace_name=f"task:{task}",
+            ticket_key=ticket_key,
         )
         observe_agent_duration(task_type=task, duration=time.monotonic() - _start)
 

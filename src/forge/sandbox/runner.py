@@ -22,6 +22,7 @@ from pathlib import Path
 
 from forge.config import Settings, get_settings
 from forge.prompts import load_prompt
+from forge.skills.resolver import resolve_skill_paths
 
 logger = logging.getLogger(__name__)
 
@@ -173,40 +174,39 @@ class ContainerRunner:
             return adc_path
         return None
 
-    def _get_skill_mounts(self) -> tuple[list[tuple[Path, str]], str]:
+    def _get_skill_mounts(
+        self, ticket_key: str | None = None
+    ) -> tuple[list[tuple[Path, str]], str]:
         """Get skill directory mounts and container paths.
+
+        Resolves skill directories via the resolver using settings.skills_dir as
+        the base, with per-project overrides and fallback to skills/default/.
 
         Returns:
             Tuple of (mounts, container_paths) where:
             - mounts: List of (host_path, container_path) tuples
             - container_paths: Comma-separated paths for AGENT_SKILL_PATHS env var
         """
-        skill_paths_str = self.settings.container_skill_paths
-        if not skill_paths_str:
-            return [], ""
+        skills_dir = Path.cwd() / self.settings.skills_dir.rstrip("/")
+        host_paths = [
+            Path(p.rstrip("/")) for p in resolve_skill_paths(ticket_key or "", skills_dir)
+        ]
 
         mounts = []
         container_paths = []
 
-        for i, path_str in enumerate(skill_paths_str.split(",")):
-            path_str = path_str.strip()
-            if not path_str:
-                continue
-
-            # Resolve to absolute path
-            host_path = Path(path_str)
+        for i, host_path in enumerate(host_paths):
             if not host_path.is_absolute():
-                # Relative paths are relative to current working directory
-                host_path = Path.cwd() / path_str
+                host_path = Path.cwd() / host_path
 
             if not host_path.exists():
                 logger.warning(f"Skill path does not exist: {host_path}")
                 continue
 
-            # Mount to /skills/skill_N/ in container
             container_path = f"/skills/skill_{i}"
             mounts.append((host_path.resolve(), container_path))
             container_paths.append(f"{container_path}/")
+            logger.info(f"Mounting skill dir: {host_path} → {container_path}")
 
         return mounts, ",".join(container_paths)
 
@@ -235,6 +235,7 @@ class ContainerRunner:
         task_file: Path,
         config: ContainerConfig,
         container_name: str,
+        ticket_key: str | None = None,
     ) -> list[str]:
         """Build the podman run command."""
 
@@ -276,7 +277,7 @@ class ContainerRunner:
                 )
 
         # Mount skill directories
-        skill_mounts, container_skill_paths = self._get_skill_mounts()
+        skill_mounts, container_skill_paths = self._get_skill_mounts(ticket_key)
         for host_path, container_path in skill_mounts:
             cmd.extend(["-v", f"{host_path}:{container_path}:ro,Z"])
 
@@ -349,7 +350,7 @@ class ContainerRunner:
             # Build container name and command
             container_name = self._build_container_name(ticket_key, repo_name)
             cmd = self._build_podman_command(
-                workspace_path, task_file, config, container_name
+                workspace_path, task_file, config, container_name, ticket_key
             )
 
             logger.info(f"Starting container {container_name} for task: {task_summary}")

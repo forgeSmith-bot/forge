@@ -200,13 +200,9 @@ class Settings(BaseSettings):
         default="",
         description="Working directory for agent file operations (empty = current dir)",
     )
-    agent_skill_paths: str = Field(
-        default="plugins/forge-sdlc/skills/",
-        description="Comma-separated list of skill directories for orchestrator agent",
-    )
-    container_skill_paths: str = Field(
-        default="",
-        description="Skill directories for container agent (empty = no skills)",
+    skills_dir: str = Field(
+        default="skills/",
+        description="Base directory for skill resolution. The resolver finds skills/default/ and skills/{project}/ under this path.",
     )
     container_langchain_verbose: bool = Field(
         default=False,
