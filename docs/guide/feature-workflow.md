@@ -60,7 +60,26 @@ Forge generates a behavioral specification from the approved PRD, typically usin
 
 Forge breaks the feature into logical epics — high-level areas of work that map to implementation phases.
 
-**Human action:** Review the epic plan. Approve with `forge:plan-approved`.
+**Human action:** Review the epic plan. You have four options at this stage:
+
+| Action | How |
+|--------|-----|
+| Approve | Change label to `forge:plan-approved` |
+| Ask a question | Comment with `?` prefix — Forge answers without re-decomposing |
+| Revise one epic | Comment on the **specific epic sub-ticket** — Forge updates only that epic |
+| Redo the full decomposition | Comment on the **feature ticket** (no `?` prefix) — Forge regenerates all epics with your feedback |
+
+```mermaid
+flowchart TD
+    Gate([plan_approval_gate])
+    Gate -->|forge:plan-approved| Next[Generate Tasks]
+    Gate -->|"? on feature ticket"| QA[Answer Question]
+    Gate -->|Comment on feature ticket| Regen[Regenerate All Epics]
+    Gate -->|Comment on epic sub-ticket| Update[Update Single Epic]
+    QA --> Gate
+    Regen --> Gate
+    Update --> Gate
+```
 
 ---
 
@@ -68,7 +87,26 @@ Forge breaks the feature into logical epics — high-level areas of work that ma
 
 Forge generates granular implementation tasks scoped to individual repositories. Each task is sized to fit in a single container execution pass.
 
-**Human action:** Review the tasks. Approve with `forge:task-approved`.
+**Human action:** Review the tasks. You have four options at this stage:
+
+| Action | How |
+|--------|-----|
+| Approve | Change label to `forge:task-approved` |
+| Ask a question | Comment with `?` prefix — Forge answers without regenerating |
+| Revise one task | Comment on the **specific task sub-ticket** — Forge updates only that task |
+| Regenerate all tasks | Comment on the **feature or epic ticket** (no `?` prefix) — Forge regenerates the full task list with your feedback |
+
+```mermaid
+flowchart TD
+    Gate([task_approval_gate])
+    Gate -->|forge:task-approved| Next[Implement Tasks]
+    Gate -->|"? on ticket"| QA[Answer Question]
+    Gate -->|Comment on feature/epic| Regen[Regenerate All Tasks]
+    Gate -->|Comment on task sub-ticket| Update[Update Single Task]
+    QA --> Gate
+    Regen --> Gate
+    Update --> Gate
+```
 
 ---
 

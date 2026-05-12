@@ -8,34 +8,66 @@ Open a [GitHub issue](https://github.com/Forge-sdlc/forge/issues). Issues are th
 
 The point is to work on things together. An early conversation usually leads to a better outcome than a PR that surprises everyone.
 
-## The fastest way to contribute: write a skill set
+## Customize Forge for your project
 
-If your team uses Forge and has customized how it behaves for your stack — your CI failure categories, your PRD format, your implementation conventions — that knowledge is worth sharing.
+Skills are the primary customization mechanism — they define how Forge generates PRDs, analyzes CI failures, implements code, and more. Since the [skill installer](https://github.com/forge-sdlc/forge/pull/34) landed, teams keep their skills in their own Git repository and point Forge at it via a Jira project property (think of a _plugin_). You never need to fork the Forge repo to customize behavior.
 
-**A skill set is a directory under `skills/` named after your Jira project key (lowercase):**
+### 1. Author your skills
+
+Create a Git repository (anywhere) with one directory per skill you want to override:
 
 ```
-skills/
-└── myteam/
-    ├── analyze-ci/
-    │   └── SKILL.md       ← your CI failure categories and tooling
-    └── generate-prd/
-        ├── SKILL.md       ← your PRD process
-        └── prd-template.md
+forge-skills-myteam/
+├── generate-prd/
+│   ├── SKILL.md
+│   └── prd-template.md
+└── analyze-ci/
+    └── SKILL.md
 ```
 
-You only need to include the skills you actually changed. Any skill you don't provide falls back to `skills/default/` automatically.
+You only need the skills you're actually changing. Any skill you don't provide falls back to `skills/default/` automatically. See the [Skills Authoring Guide](../skills/authoring.md) for what belongs in a skill.
 
-See the [Skills Authoring Guide](../skills/authoring.md) for what belongs in a skill, what belongs in a system prompt, and the quality bar for defaults.
+### 2. Configure your Jira project
 
-### To contribute a skill set
+Use `forge project-setup` to set repos and skill sources in one command:
 
-1. Fork the repo
-2. Create `skills/{your-project-key}/` with your customized skills
-3. Make sure your skills are genuinely stack-specific (not a copy of the default)
-4. Submit a PR with a short description of your stack and what you changed
+```bash
+forge project-setup MYPROJ \
+  --repo myorg/myrepo \
+  --default-repo myorg/myrepo \
+  --add-skill source=https://github.com/myorg/forge-skills-myteam,ref=v1.0,path=
+```
 
-We'll review for quality and clarity, not for agreement with your choices — the point is that your conventions work for your team.
+This writes three Jira project properties — `forge.repos`, `forge.default_repo`, and `forge.skills` — that Forge reads per ticket.
+
+For a monorepo where skills live in a subdirectory, use `skill_mapping` mode instead of `path`:
+
+```bash
+forge project-setup MYPROJ \
+  --add-skill source=https://github.com/myorg/tooling,ref=main,mapping=generate-prd:ai/prompts/prd
+```
+
+### 3. Auto-sync
+
+The Forge worker reads the `forge.skills` project property at the start of every workflow and fetches any packages that have changed (SHA-based comparison against `skills/skills.lock`). No restart needed — push a new tag to your skills repo, update the `ref` via `forge project-setup`, and the next workflow run picks it up.
+
+### Local development
+
+While authoring skills, install directly from a local path:
+
+```bash
+# From a local directory
+forge skills install /path/to/forge-skills-myteam --project MYPROJ
+
+# From a Git URL (one-off, without setting the Jira property)
+forge skills install https://github.com/myorg/forge-skills-myteam --project MYPROJ --ref v1.0
+
+# See what's installed
+forge skills list
+
+# Re-fetch everything in the lock file to pick up upstream changes
+forge skills update --project MYPROJ
+```
 
 ## Other ways to contribute
 

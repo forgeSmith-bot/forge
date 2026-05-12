@@ -79,7 +79,43 @@ Point Jira and GitHub webhooks at your server.
 
     **Events:** Pull requests, Pull request reviews, Check runs, Issue comments
 
-For local development, use [ngrok](https://ngrok.com/) or a similar tunnel to expose your local server.
+For local development you have two options:
+
+=== "forge-poller (recommended)"
+
+    [forge-poller](https://github.com/forge-sdlc/forge-poller) polls Jira and GitHub directly and forwards events to Forge — no public URL or webhook configuration needed.
+
+    ```bash
+    git clone https://github.com/forge-sdlc/forge-poller
+    cd forge-poller
+    cp .env.example .env   # fill in Jira, GitHub, and FORGE_GATEWAY_URL=http://localhost:8000
+    uv sync
+    uv run uvicorn poller.main:app --port 8001
+    ```
+
+    Register the ticket you're testing:
+
+    ```bash
+    curl -X POST http://localhost:8001/watch \
+      -H "Content-Type: application/json" \
+      -d '{"tickets": ["MYPROJ-123"]}'
+    ```
+
+    !!! note
+        Disable signature validation in Forge's `.env` so the poller's forwarded events are accepted:
+        ```
+        JIRA_WEBHOOK_SECRET=
+        GITHUB_WEBHOOK_SECRET=
+        ```
+
+=== "ngrok (tunnel)"
+
+    Expose your local server with [ngrok](https://ngrok.com/) and point your Jira and GitHub webhooks at the public URL.
+
+    ```bash
+    ngrok http 8000
+    # then update your Jira/GitHub webhook URLs to the ngrok URL
+    ```
 
 ## 6. Start Your First Workflow
 
@@ -87,7 +123,7 @@ For local development, use [ngrok](https://ngrok.com/) or a similar tunnel to ex
 2. Forge will automatically generate a PRD and post it as a comment
 3. Review the PRD and change the label to `forge:prd-approved` to continue
 
-That's it. Forge will carry the ticket through the full pipeline with approval gates at each stage.
+That's it. Forge will carry the ticket through the full pipeline with similar approval gates at each planning stage.
 
 !!! tip "Local development shortcut"
     Set `FORGE_REQUIRE_PROJECT_CONFIG=false` in `.env` and configure `GITHUB_KNOWN_REPOS` / `GITHUB_DEFAULT_REPO` to skip the Jira project property setup. See the [Developer Guide](developer-guide.md) for details.

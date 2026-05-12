@@ -102,6 +102,6 @@ Write `.forge/fix-plan.md` with:
 3. Proposed fix approach
 ```
 
-## Contributing Your Skills
+## Using your skills with Forge
 
-See [Contributing](../dev/contributing.md) for how to submit your skill set as a PR.
+See [Customize Forge for your project](../dev/contributing.md#customize-forge-for-your-project) for how to point a Jira project at your skills repo using `forge project-setup` and the skill installer.
