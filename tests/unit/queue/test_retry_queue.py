@@ -14,7 +14,6 @@ from forge.queue.retry import (
     RETRY_QUEUE_KEY,
     RetryEntry,
     RetryQueue,
-    get_retry_queue,
 )
 
 # ---------------------------------------------------------------------------
@@ -178,27 +177,23 @@ class TestRemoveFromRetry:
         redis.zrem.assert_called_once_with(RETRY_QUEUE_KEY, json.dumps({"stub": True}))
         redis.delete.assert_called_once()
 
-
-# ---------------------------------------------------------------------------
-# get_retry_queue singleton
-# ---------------------------------------------------------------------------
-
-
-class TestGetRetryQueue:
     @pytest.mark.asyncio
-    async def test_returns_retry_queue_instance(self):
-        import forge.queue.retry as retry_module
+    async def test_removes_entry_without_clearing_counter(self):
+        """remove_from_retry_without_counter_reset calls zrem but NOT delete."""
+        message = make_message()
+        entry = RetryEntry(
+            message=message,
+            attempt=1,
+            next_retry=datetime(2024, 1, 1),
+            last_error="err",
+        )
 
-        # Reset singleton so we get a fresh one
-        retry_module._retry_queue = None
-        instance = await get_retry_queue()
-        assert isinstance(instance, RetryQueue)
+        rq = RetryQueue()
+        redis = make_redis_mock()
+        rq._redis = redis
 
-    @pytest.mark.asyncio
-    async def test_singleton_same_instance(self):
-        import forge.queue.retry as retry_module
+        with patch.object(entry, "to_dict", return_value={"stub": True}):
+            await rq.remove_from_retry_without_counter_reset(entry)
 
-        retry_module._retry_queue = None
-        a = await get_retry_queue()
-        b = await get_retry_queue()
-        assert a is b
+        redis.zrem.assert_called_once_with(RETRY_QUEUE_KEY, json.dumps({"stub": True}))
+        redis.delete.assert_not_called()

@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 # Consumer group name
 CONSUMER_GROUP = "forge-workers"
 
+# How often (seconds) the retry-queue poller wakes up
+POLL_INTERVAL_SECONDS = 10
+
 # Handler type for message processing
 MessageHandler = Callable[[QueueMessage], Coroutine[Any, Any, None]]
 
@@ -192,8 +195,6 @@ class QueueConsumer:
         fixed interval so retries are dispatched once their backoff window has
         elapsed.
         """
-        POLL_INTERVAL_SECONDS = 10
-
         while self._running:
             try:
                 entries = await self._retry_queue.get_due_messages()
@@ -201,6 +202,13 @@ class QueueConsumer:
                     try:
                         await self._process_message(entry.message)
                         await self._retry_queue.remove_from_retry(entry)
+                        stream = (
+                            JIRA_STREAM
+                            if entry.message.source == EventSource.JIRA
+                            else GITHUB_STREAM
+                        )
+                        redis_client = await self._get_redis()
+                        await redis_client.xack(stream, CONSUMER_GROUP, entry.message.message_id)
                         logger.info(
                             f"Retry succeeded for {entry.message.ticket_key}:"
                             f"{entry.message.event_id} (attempt {entry.attempt})"

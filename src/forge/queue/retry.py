@@ -48,7 +48,7 @@ class RetryEntry:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "RetryEntry":
         """Create from dictionary loaded from Redis."""
-        msg_data = data["message"]
+        msg_data = dict(data["message"])  # shallow copy — do not mutate the caller's dict
         message_id = msg_data.pop("message_id", "")
         return cls(
             message=QueueMessage.from_redis(message_id, msg_data),
@@ -254,9 +254,9 @@ class RetryQueue:
 
         try:
             data = json.loads(entries[0])
-            msg_data = data["message"]
-            message_id = msg_data.pop("message_id", "")
-            message = QueueMessage.from_redis(message_id, msg_data)
+            msg_data = dict(data["message"])  # shallow copy — do not mutate the caller's dict
+            stream_entry_id = msg_data.pop("message_id", "")
+            message = QueueMessage.from_redis(stream_entry_id, msg_data)
 
             # Reset attempt counter
             message_id = f"{message.source}:{message.ticket_key}:{message.event_id}"
@@ -296,15 +296,3 @@ class RetryQueue:
             "retry_queue_depth": await redis.zcard(RETRY_QUEUE_KEY),
             "dead_letter_depth": await redis.llen(DEAD_LETTER_KEY),
         }
-
-
-# Singleton instance
-_retry_queue: RetryQueue | None = None
-
-
-async def get_retry_queue() -> RetryQueue:
-    """Get the singleton retry queue instance."""
-    global _retry_queue
-    if _retry_queue is None:
-        _retry_queue = RetryQueue()
-    return _retry_queue
