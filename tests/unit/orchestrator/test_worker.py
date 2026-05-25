@@ -532,3 +532,67 @@ class TestCiWebhookSignalAtCiEvaluator:
 
         # unchanged state returned — is_paused stays as it was
         assert result is state
+
+
+class TestExtractTextFromAdf:
+    """Tests for _extract_text_from_adf."""
+
+    def test_paragraph_text(self):
+        adf = {
+            "type": "doc",
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": "hello"}]}],
+        }
+        assert OrchestratorWorker._extract_text_from_adf(adf) == "hello"
+
+    def test_blockquote_text(self):
+        adf = {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "blockquote",
+                    "content": [
+                        {"type": "paragraph", "content": [{"type": "text", "text": "option 2"}]}
+                    ],
+                }
+            ],
+        }
+        assert "option 2" in OrchestratorWorker._extract_text_from_adf(adf)
+
+    def test_heading_text(self):
+        adf = {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "heading",
+                    "attrs": {"level": 1},
+                    "content": [{"type": "text", "text": "Title"}],
+                }
+            ],
+        }
+        assert "Title" in OrchestratorWorker._extract_text_from_adf(adf)
+
+    def test_bullet_list_text(self):
+        adf = {
+            "type": "doc",
+            "content": [
+                {
+                    "type": "bulletList",
+                    "content": [
+                        {
+                            "type": "listItem",
+                            "content": [
+                                {
+                                    "type": "paragraph",
+                                    "content": [{"type": "text", "text": "item one"}],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+        assert "item one" in OrchestratorWorker._extract_text_from_adf(adf)
+
+    def test_non_dict_returns_string(self):
+        assert OrchestratorWorker._extract_text_from_adf("plain") == "plain"
+        assert OrchestratorWorker._extract_text_from_adf(None) == ""

@@ -297,7 +297,12 @@ async def decompose_plan(state: BugState) -> BugState:
         existing_links = await jira.get_issue_links(ticket_key)
         covered: dict[str, str] = {}
         for link in existing_links:
-            if link.get("type", "").lower() in ("related", "relates to", "is related to"):
+            if link.get("type", "").lower() in (
+                "relates",
+                "related",
+                "relates to",
+                "is related to",
+            ):
                 linked_key = link.get("inward_key") or link.get("outward_key")
                 if linked_key:
                     with contextlib.suppress(Exception):
@@ -306,46 +311,44 @@ async def decompose_plan(state: BugState) -> BugState:
                             if lbl.startswith("repo:"):
                                 covered[lbl[5:]] = linked_key
 
-        all_task_keys: list[str] = list(state.get("linked_task_keys") or [])
-        for existing_key in covered.values():
-            if existing_key not in all_task_keys:
-                all_task_keys.append(existing_key)
+        tasks_by_repo: dict[str, list[str]] = {}
+        all_task_keys: list[str] = []
 
         for repo in repos:
             if repo in covered:
-                continue
+                task_key = covered[repo]
+            else:
+                scoped_description = (
+                    f"## Bug Fix Plan\n\n{plan_content}\n\n"
+                    f"## Root Cause\n\n{rca_content}\n\n"
+                    f"## Selected Approach\n\n"
+                    f"**{selected_fix_approach.get('title', '')}**: "
+                    f"{selected_fix_approach.get('description', '')}\n\n"
+                    f"**Scope:** This task covers changes to `{repo}` only."
+                )
 
-            scoped_description = (
-                f"## Bug Fix Plan\n\n{plan_content}\n\n"
-                f"## Root Cause\n\n{rca_content}\n\n"
-                f"## Selected Approach\n\n"
-                f"**{selected_fix_approach.get('title', '')}**: "
-                f"{selected_fix_approach.get('description', '')}\n\n"
-                f"**Scope:** This task covers changes to `{repo}` only."
-            )
+                task_key = await jira.create_task(
+                    project_key=project_key,
+                    summary=f"Fix: {bug_summary} ({repo})",
+                    description=scoped_description,
+                    labels=[
+                        f"repo:{repo}",
+                        ForgeLabel.FORGE_MANAGED.value,
+                        f"forge:parent:{ticket_key}",
+                    ],
+                )
+                await jira.create_issue_link("Related", task_key, ticket_key)
 
-            task_key = await jira.create_task(
-                project_key=project_key,
-                summary=f"Fix: {bug_summary} ({repo})",
-                description=scoped_description,
-                labels=[f"repo:{repo}", ForgeLabel.FORGE_MANAGED.value],
-            )
-            await jira.create_issue_link("Related", task_key, ticket_key)
+            tasks_by_repo[repo] = [task_key]
             all_task_keys.append(task_key)
 
-        # Set up the implementation loop state — same pattern as feature workflow.
         # repos_to_process drives teardown_and_route's multi-repo iteration.
-        # tasks_by_repo lets implement_task find the right task for each repo
-        # (same structure feature workflow uses; each repo gets exactly one task).
-        repos_to_process = repos  # ordered list matching all_task_keys
-        tasks_by_repo = {
-            repo: [task_key]
-            for repo, task_key in zip(repos_to_process, all_task_keys, strict=False)
-        }
+        repos_to_process = repos
         return update_state_timestamp(
             {
                 **state,
                 "linked_task_keys": all_task_keys,
+                "task_keys": all_task_keys,
                 "repos_to_process": repos_to_process,
                 "tasks_by_repo": tasks_by_repo,
                 "current_repo": repos_to_process[0] if repos_to_process else None,

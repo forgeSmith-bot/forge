@@ -34,19 +34,40 @@ def base_bug_state():
 
 SAMPLE_RCA_JSON = {
     "summary": "Password validation rejects special characters.",
-    "code_location": {"file": "src/auth/validators.py", "function": "validate_password", "line_range": "23-31"},
+    "code_location": {
+        "file": "src/auth/validators.py",
+        "function": "validate_password",
+        "line_range": "23-31",
+    },
     "mechanism": "Regex VALID_PASSWORD_PATTERN excludes $ @ ! characters.",
     "trigger_to_symptom": "User submits password with $; regex fails; 400 returned.",
     "hypothesis_log": [
-        {"candidate": "Regex exclusion", "evidence": "Pattern confirmed in code", "verdict": "accepted", "reason": "Directly reproduces bug."},
+        {
+            "candidate": "Regex exclusion",
+            "evidence": "Pattern confirmed in code",
+            "verdict": "accepted",
+            "reason": "Directly reproduces bug.",
+        },
     ],
     "introduced_in": {"commit": "abc1234", "pr": "#42", "date": "2024-01-15"},
     "confidence": {"level": "High", "percentage": 95, "rationale": "Code directly confirmed."},
     "options": [
-        {"title": "Update regex", "description": "Extend VALID_PASSWORD_PATTERN to include special chars.", "tradeoffs": "Low risk."},
-        {"title": "Escape before validate", "description": "Pre-process input before regex.", "tradeoffs": "Higher complexity."},
+        {
+            "title": "Update regex",
+            "description": "Extend VALID_PASSWORD_PATTERN to include special chars.",
+            "tradeoffs": "Low risk.",
+        },
+        {
+            "title": "Escape before validate",
+            "description": "Pre-process input before regex.",
+            "tradeoffs": "Higher complexity.",
+        },
     ],
-    "reproducibility": {"feasible": True, "test_source": "def test_special_chars(): ...", "conditions": ""},
+    "reproducibility": {
+        "feasible": True,
+        "test_source": "def test_special_chars(): ...",
+        "conditions": "",
+    },
 }
 
 
@@ -95,6 +116,7 @@ def _make_mock_runner_failure():
 
 def _make_mock_runner_no_file():
     """Runner that succeeds but writes no rca.json."""
+
     class _FakeRunner:
         async def run(self, workspace_path, **_kwargs):
             forge_dir = workspace_path / ".forge"
@@ -147,7 +169,9 @@ class TestAnalyzeBug:
 
         with (
             patch("forge.workflow.nodes.rca_analysis.JiraClient", return_value=mock_jira),
-            patch("forge.workflow.nodes.rca_analysis.ContainerRunner", return_value=_CapturingRunner()),
+            patch(
+                "forge.workflow.nodes.rca_analysis.ContainerRunner", return_value=_CapturingRunner()
+            ),
         ):
             await analyze_bug(base_bug_state)
 
@@ -248,7 +272,10 @@ class TestAnalyzeBug:
     @pytest.mark.asyncio
     async def test_malformed_rca_json_triggers_retry(self, base_bug_state):
         """rca.json missing required keys causes an error and increments retry_count."""
-        bad_rca = {"summary": "Bad", "options": [{"title": "x", "description": "y", "tradeoffs": "z"}]}  # missing many keys
+        bad_rca = {
+            "summary": "Bad",
+            "options": [{"title": "x", "description": "y", "tradeoffs": "z"}],
+        }  # missing many keys
         mock_jira = _make_mock_jira()
         runner = _make_mock_runner_success(rca_data=bad_rca)
 
@@ -323,7 +350,9 @@ class TestReflectRca:
 
         with (
             patch("forge.workflow.nodes.rca_analysis.JiraClient", return_value=mock_jira),
-            patch("forge.workflow.nodes.rca_analysis.ContainerRunner", return_value=_CapturingRunner()),
+            patch(
+                "forge.workflow.nodes.rca_analysis.ContainerRunner", return_value=_CapturingRunner()
+            ),
         ):
             await reflect_rca(rca_state)
 
@@ -361,10 +390,27 @@ class TestReflectRca:
         assert result["reflection_count"] == 2
 
     @pytest.mark.asyncio
+    async def test_invalid_output_is_not_treated_as_valid(self, rca_state):
+        """Output containing 'INVALID' must not match as VALID (substring trap)."""
+        mock_jira = _make_mock_jira()
+        runner = self._make_reflect_runner("INVALID: code_location file does not exist")
+
+        with (
+            patch("forge.workflow.nodes.rca_analysis.JiraClient", return_value=mock_jira),
+            patch("forge.workflow.nodes.rca_analysis.ContainerRunner", return_value=runner),
+        ):
+            result = await reflect_rca(rca_state)
+
+        assert result["current_node"] != "rca_option_gate"
+        assert result["reflection_count"] == 1
+
+    @pytest.mark.asyncio
     async def test_critique_output_stores_critique_and_increments_count(self, rca_state):
         """Critique output stores in reflection_critique and increments reflection_count."""
         mock_jira = _make_mock_jira()
-        runner = self._make_reflect_runner("1. Missing git blame evidence.\n2. No rejected hypotheses.")
+        runner = self._make_reflect_runner(
+            "1. Missing git blame evidence.\n2. No rejected hypotheses."
+        )
 
         with (
             patch("forge.workflow.nodes.rca_analysis.JiraClient", return_value=mock_jira),
@@ -461,7 +507,9 @@ class TestReflectRca:
 
         with (
             patch("forge.workflow.nodes.rca_analysis.JiraClient", return_value=mock_jira),
-            patch("forge.workflow.nodes.rca_analysis.ContainerRunner", return_value=_FailingRunner()),
+            patch(
+                "forge.workflow.nodes.rca_analysis.ContainerRunner", return_value=_FailingRunner()
+            ),
         ):
             result = await reflect_rca(rca_state)
 

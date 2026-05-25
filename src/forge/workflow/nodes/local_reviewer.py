@@ -208,6 +208,7 @@ async def _run_bug_review(state: WorkflowState) -> WorkflowState:
         return update_state_timestamp(
             {
                 **state,
+                "local_review_verdict": None,
                 "current_node": "create_pr",
                 "last_error": str(e),
             }

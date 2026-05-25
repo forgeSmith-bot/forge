@@ -29,7 +29,11 @@ def base_bug_state():
         "rca_content": "Password validator rejects valid special characters.",
         "rca_options": [
             {"title": "Fix regex", "description": "Update pattern.", "tradeoffs": "Low risk."},
-            {"title": "Escape chars", "description": "Escape before validate.", "tradeoffs": "Higher complexity."},
+            {
+                "title": "Escape chars",
+                "description": "Escape before validate.",
+                "tradeoffs": "Higher complexity.",
+            },
         ],
         "selected_fix_option": 1,
         "selected_fix_approach": {
@@ -133,7 +137,9 @@ class TestPlanBugFix:
 
         with (
             patch("forge.workflow.nodes.plan_bug_fix.JiraClient", return_value=mock_jira),
-            patch("forge.workflow.nodes.plan_bug_fix.ContainerRunner", return_value=_CapturingRunner()),
+            patch(
+                "forge.workflow.nodes.plan_bug_fix.ContainerRunner", return_value=_CapturingRunner()
+            ),
         ):
             await plan_bug_fix(base_bug_state)
 
@@ -369,7 +375,9 @@ class TestRegeneratePlan:
 
         with (
             patch("forge.workflow.nodes.plan_bug_fix.JiraClient", return_value=mock_jira),
-            patch("forge.workflow.nodes.plan_bug_fix.ContainerRunner", return_value=_CapturingRunner()),
+            patch(
+                "forge.workflow.nodes.plan_bug_fix.ContainerRunner", return_value=_CapturingRunner()
+            ),
         ):
             await regenerate_plan(regen_state)
 
@@ -453,8 +461,7 @@ class TestDecomposePlan:
     async def test_one_task_created_per_repo(self, plan_state):
         """One Jira task is created for each unique identified repo."""
         plan_state["plan_content"] = (
-            "Fix auth in repo:acme/backend.\n"
-            "Update docs in repo:acme/frontend.\n"
+            "Fix auth in repo:acme/backend.\nUpdate docs in repo:acme/frontend.\n"
         )
         mock_jira = _make_mock_jira()
         mock_jira.create_task = AsyncMock(side_effect=["BUG-50", "BUG-51"])
@@ -479,7 +486,7 @@ class TestDecomposePlan:
 
     @pytest.mark.asyncio
     async def test_task_has_correct_labels(self, plan_state):
-        """Each task has 'repo:<name>' and 'forge:managed' labels."""
+        """Each task has 'repo:<name>', 'forge:managed', and 'forge:parent:<key>' labels."""
         mock_jira = _make_mock_jira()
 
         with patch("forge.workflow.nodes.plan_bug_fix.JiraClient", return_value=mock_jira):
@@ -489,6 +496,7 @@ class TestDecomposePlan:
         labels = call_kwargs[1].get("labels") or call_kwargs[0][4]
         assert "repo:acme/backend" in labels
         assert ForgeLabel.FORGE_MANAGED.value in labels
+        assert "forge:parent:BUG-42" in labels
 
     @pytest.mark.asyncio
     async def test_task_linked_to_bug_via_implements(self, plan_state):
@@ -503,7 +511,7 @@ class TestDecomposePlan:
 
     @pytest.mark.asyncio
     async def test_all_task_keys_stored_in_linked_task_keys(self, plan_state):
-        """linked_task_keys contains all created task keys."""
+        """linked_task_keys and task_keys both contain all created task keys."""
         mock_jira = _make_mock_jira()
         mock_jira.create_task = AsyncMock(return_value="BUG-50")
 
@@ -511,6 +519,7 @@ class TestDecomposePlan:
             result = await decompose_plan(plan_state)
 
         assert "BUG-50" in result["linked_task_keys"]
+        assert "BUG-50" in result["task_keys"]
 
     @pytest.mark.asyncio
     async def test_no_repos_found_defaults_to_project_repos(self, plan_state):
@@ -531,9 +540,11 @@ class TestDecomposePlan:
     async def test_idempotency_existing_task_reused(self, plan_state):
         """If a task with matching repo: label already exists, reuse it."""
         mock_jira = _make_mock_jira()
-        mock_jira.get_issue_links = AsyncMock(return_value=[
-            {"type": "Related", "inward_key": "BUG-50", "outward_key": None},
-        ])
+        mock_jira.get_issue_links = AsyncMock(
+            return_value=[
+                {"type": "Related", "inward_key": "BUG-50", "outward_key": None},
+            ]
+        )
         mock_jira.get_labels = AsyncMock(return_value=["repo:acme/backend", "forge:managed"])
 
         with patch("forge.workflow.nodes.plan_bug_fix.JiraClient", return_value=mock_jira):
@@ -547,13 +558,14 @@ class TestDecomposePlan:
     async def test_idempotency_partial_coverage(self, plan_state):
         """Creates only missing repo tasks; reuses existing ones for already-covered repos."""
         plan_state["plan_content"] = (
-            "Fix auth in repo:acme/backend.\n"
-            "Update docs in repo:acme/frontend.\n"
+            "Fix auth in repo:acme/backend.\nUpdate docs in repo:acme/frontend.\n"
         )
         mock_jira = _make_mock_jira()
-        mock_jira.get_issue_links = AsyncMock(return_value=[
-            {"type": "Related", "inward_key": "BUG-50", "outward_key": None},
-        ])
+        mock_jira.get_issue_links = AsyncMock(
+            return_value=[
+                {"type": "Related", "inward_key": "BUG-50", "outward_key": None},
+            ]
+        )
         mock_jira.get_labels = AsyncMock(return_value=["repo:acme/backend", "forge:managed"])
         mock_jira.create_task = AsyncMock(return_value="BUG-51")
 
@@ -604,9 +616,11 @@ class TestDecomposePlan:
     async def test_get_labels_failure_skips_that_link(self, plan_state):
         """If get_labels fails for an existing linked task, it is skipped (not escalated)."""
         mock_jira = _make_mock_jira()
-        mock_jira.get_issue_links = AsyncMock(return_value=[
-            {"type": "implements", "inward_key": "BUG-DELETED", "outward_key": None},
-        ])
+        mock_jira.get_issue_links = AsyncMock(
+            return_value=[
+                {"type": "implements", "inward_key": "BUG-DELETED", "outward_key": None},
+            ]
+        )
         mock_jira.get_labels = AsyncMock(side_effect=RuntimeError("Issue not found"))
         mock_jira.create_task = AsyncMock(return_value="BUG-50")
 

@@ -143,7 +143,10 @@ class TestLocalReviewBug:
         mock_workspace = MagicMock()
 
         with (
-            patch("forge.workflow.nodes.local_reviewer.ContainerRunner", return_value=_CapturingRunner()),
+            patch(
+                "forge.workflow.nodes.local_reviewer.ContainerRunner",
+                return_value=_CapturingRunner(),
+            ),
             patch("forge.workflow.nodes.local_reviewer.GitOperations", return_value=mock_git),
             patch("forge.workflow.nodes.local_reviewer.Workspace", return_value=mock_workspace),
         ):
@@ -174,7 +177,9 @@ class TestLocalReviewBug:
     @pytest.mark.asyncio
     async def test_tests_incomplete_increments_retry(self, base_bug_review_state):
         """'tests_incomplete' verdict → qualitative_retry_count incremented, routes to implement_bug_fix."""
-        runner = _make_mock_runner("verdict: tests_incomplete\n\nfeedback: Tests do not fail without fix.")
+        runner = _make_mock_runner(
+            "verdict: tests_incomplete\n\nfeedback: Tests do not fail without fix."
+        )
         mock_git = _make_mock_git()
         mock_workspace = MagicMock()
 
@@ -263,6 +268,7 @@ class TestBugReviewExceptionHandling:
     @pytest.mark.asyncio
     async def test_exception_preserves_last_error(self, base_bug_review_state):
         """Container exception sets last_error in state (not None)."""
+
         class _FailingRunner:
             async def run(self, **_kwargs):
                 raise RuntimeError("Container crashed")
@@ -270,7 +276,9 @@ class TestBugReviewExceptionHandling:
         mock_workspace = MagicMock()
 
         with (
-            patch("forge.workflow.nodes.local_reviewer.ContainerRunner", return_value=_FailingRunner()),
+            patch(
+                "forge.workflow.nodes.local_reviewer.ContainerRunner", return_value=_FailingRunner()
+            ),
             patch("forge.workflow.nodes.local_reviewer.GitOperations", return_value=MagicMock()),
             patch("forge.workflow.nodes.local_reviewer.Workspace", return_value=mock_workspace),
         ):
@@ -279,6 +287,30 @@ class TestBugReviewExceptionHandling:
         assert result["current_node"] == "create_pr"
         assert result["last_error"] is not None
         assert "Container crashed" in result["last_error"]
+
+    @pytest.mark.asyncio
+    async def test_exception_clears_stale_verdict(self, base_bug_review_state):
+        """Exception handler must clear local_review_verdict to prevent stale routing."""
+        base_bug_review_state["local_review_verdict"] = "tests_incomplete"
+        base_bug_review_state["qualitative_retry_count"] = 1
+
+        class _FailingRunner:
+            async def run(self, **_kwargs):
+                raise RuntimeError("OOM")
+
+        mock_workspace = MagicMock()
+
+        with (
+            patch(
+                "forge.workflow.nodes.local_reviewer.ContainerRunner", return_value=_FailingRunner()
+            ),
+            patch("forge.workflow.nodes.local_reviewer.GitOperations", return_value=MagicMock()),
+            patch("forge.workflow.nodes.local_reviewer.Workspace", return_value=mock_workspace),
+        ):
+            result = await local_review_changes(base_bug_review_state)
+
+        assert result["current_node"] == "create_pr"
+        assert result["local_review_verdict"] is None
 
 
 class TestLocalReviewFeature:
@@ -303,7 +335,10 @@ class TestLocalReviewFeature:
         mock_workspace = MagicMock()
 
         with (
-            patch("forge.workflow.nodes.local_reviewer.ContainerRunner", return_value=_CapturingRunner()),
+            patch(
+                "forge.workflow.nodes.local_reviewer.ContainerRunner",
+                return_value=_CapturingRunner(),
+            ),
             patch("forge.workflow.nodes.local_reviewer.GitOperations", return_value=mock_git),
             patch("forge.workflow.nodes.local_reviewer.Workspace", return_value=mock_workspace),
         ):
@@ -327,5 +362,7 @@ class TestLocalReviewFeature:
             result = await local_review_changes(base_feature_review_state)
 
         # Feature state should not have qualitative fields modified
-        assert "qualitative_retry_count" not in result or result.get("qualitative_retry_count") is None
+        assert (
+            "qualitative_retry_count" not in result or result.get("qualitative_retry_count") is None
+        )
         assert "local_review_verdict" not in result or result.get("local_review_verdict") is None

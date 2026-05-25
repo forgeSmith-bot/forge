@@ -47,6 +47,7 @@ class BugState(
     # Planning
     plan_content: str | None
     linked_task_keys: list[str]
+    task_keys: list[str]
     tasks_by_repo: dict[str, list[str]]
 
     # Qualitative review (implementation phase)
@@ -120,6 +121,7 @@ def create_initial_bug_state(ticket_key: str, **kwargs: Any) -> BugState:
         # Planning
         "plan_content": None,
         "linked_task_keys": [],
+        "task_keys": [],
         "tasks_by_repo": {},
         # Qualitative review
         "local_review_verdict": None,

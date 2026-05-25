@@ -8,6 +8,7 @@ import re
 import signal
 import sys
 import uuid
+from dataclasses import replace as dataclass_replace
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,12 @@ from forge.workflow.router import WorkflowRouter
 from forge.workflow.utils.comment_classifier import CommentType, classify_comment
 
 logger = logging.getLogger(__name__)
+
+
+def _is_workflow_errored(state: dict) -> bool:
+    """Return True when workflow has a recorded error and is not paused for human input."""
+    return not state.get("is_paused") and state.get("last_error") is not None
+
 
 # Matches >option N anywhere in comment (case-insensitive, first match wins)
 # Supports both start-of-line usage (>option 2) and in-prose usage (let's go with >option 2)
@@ -96,23 +103,31 @@ class OrchestratorWorker:
             Message with ticket_key populated if found, otherwise unchanged.
         """
         payload = message.payload
+        repo = payload.get("repository", {}).get("full_name", "")
+        api_url = payload.get("review", {}).get("pull_request_url", "")
+        suite_prs = (
+            payload.get("check_suite", {}).get("pull_requests")
+            or payload.get("check_run", {}).get("pull_requests")
+            or []
+        )
+        pr_number = payload.get("pull_request", {}).get("number") or (
+            suite_prs[0].get("number") if suite_prs else None
+        )
+
         pr_url = (
             payload.get("pull_request", {}).get("html_url")
             or payload.get("review", {}).get("html_url")
+            or (f"https://github.com/{repo}/pull/{pr_number}" if repo and pr_number else None)
+            or (
+                api_url.replace("https://api.github.com/repos/", "https://github.com/").replace(
+                    "/pulls/", "/pull/"
+                )
+                if api_url
+                else None
+            )
         )
 
-        if not pr_url:
-            # Construct from repo + PR number for check_suite/check_run events
-            repo = payload.get("repository", {}).get("full_name", "")
-            pull_requests = (
-                payload.get("check_suite", {}).get("pull_requests")
-                or payload.get("check_run", {}).get("pull_requests")
-                or []
-            )
-            if repo and pull_requests:
-                pr_number = pull_requests[0].get("number")
-                if pr_number:
-                    pr_url = f"https://github.com/{repo}/pull/{pr_number}"
+        logger.debug(f"PR URL extracted for {message.event_id}: {pr_url!r}")
 
         if not pr_url:
             return message
@@ -124,16 +139,7 @@ class OrchestratorWorker:
                     f"Resolved ticket key {ticket_key} for GitHub event "
                     f"{message.event_id} from PR index ({pr_url})"
                 )
-                return QueueMessage(
-                    message_id=message.message_id,
-                    event_id=message.event_id,
-                    source=message.source,
-                    event_type=message.event_type,
-                    ticket_key=ticket_key,
-                    payload=message.payload,
-                    timestamp=message.timestamp,
-                    retry_count=message.retry_count,
-                )
+                return dataclass_replace(message, ticket_key=ticket_key)
         except Exception:
             logger.warning(
                 f"PR index lookup failed for {pr_url}",
@@ -276,11 +282,7 @@ class OrchestratorWorker:
 
                 logger.info(f"Resuming workflow for {ticket_key}")
 
-                # Check if we're retrying from an error state
-                was_errored = (
-                    not existing_state.values.get("is_paused")
-                    and existing_state.values.get("last_error") is not None
-                )
+                was_errored = _is_workflow_errored(existing_state.values)
 
                 # Nodes that wait for external events (CI webhooks, human review)
                 # must be re-invoked fresh so route_by_ticket_type re-runs them.
@@ -722,10 +724,7 @@ class OrchestratorWorker:
             },
         }
 
-        # Check if workflow was in an error state (not paused, but has error)
-        was_errored = (
-            not current_state.get("is_paused") and current_state.get("last_error") is not None
-        )
+        was_errored = _is_workflow_errored(current_state)
 
         # Check if workflow is at a terminal state (complete)
         terminal_states = ("complete", "complete_tasks", "aggregate_feature_status")
@@ -830,12 +829,17 @@ class OrchestratorWorker:
         if not isinstance(adf, dict):
             return str(adf) if adf else ""
 
-        texts = []
-        for node in adf.get("content", []):
-            if node.get("type") == "paragraph":
-                for child in node.get("content", []):
-                    if child.get("type") == "text":
-                        texts.append(child.get("text", ""))
+        texts: list[str] = []
+
+        def _walk(nodes: list[dict]) -> None:
+            for node in nodes:
+                if node.get("type") == "text":
+                    texts.append(node.get("text", ""))
+                children = node.get("content")
+                if children:
+                    _walk(children)
+
+        _walk(adf.get("content", []))
         return " ".join(texts)
 
     async def _post_skip_gate_feedback(
@@ -935,6 +939,41 @@ class OrchestratorWorker:
             no existing state is found.
         """
         config = {"configurable": {"thread_id": ticket_key}}
+
+        # Read ticket_type from the raw checkpoint bytes — not through a compiled
+        # graph's schema, which would apply the schema's default value and lose the
+        # stored type (e.g. FeatureState defaults ticket_type to FEATURE).
+        # aget() returns the checkpoint dict directly (not an object with .checkpoint).
+        # Read ticket_type from the raw bytes — not through a compiled graph's schema,
+        # which would apply the schema's default and lose the stored type.
+        raw_checkpoint: dict | None = None
+        with contextlib.suppress(Exception):
+            raw_checkpoint = await self._checkpointer.aget(config)
+
+        if not raw_checkpoint:
+            # No checkpoint at all — skip every aget_state call.
+            return None, None
+
+        saved_ticket_type: TicketType | None = None
+        if isinstance(raw_checkpoint, dict):
+            raw_type = raw_checkpoint.get("channel_values", {}).get("ticket_type", "")
+            with contextlib.suppress(ValueError):
+                saved_ticket_type = TicketType(str(raw_type))
+
+        if saved_ticket_type is not None:
+            # Prefer the workflow whose ticket type matches the checkpoint.
+            preferred = self.router.resolve(ticket_type=saved_ticket_type, labels=[], event={})
+            if preferred is not None:
+                compiled = self._get_compiled_workflow(preferred)
+                state = await compiled.aget_state(config)
+                if state and state.values:
+                    logger.debug(
+                        f"Found existing state for {ticket_key} in workflow "
+                        f"'{preferred.name}' (ticket_type={saved_ticket_type})"
+                    )
+                    return preferred, state
+
+        # Fallback: return the first workflow with any state.
         for workflow_class in self.router._workflows:
             workflow_instance = workflow_class()
             compiled = self._get_compiled_workflow(workflow_instance)

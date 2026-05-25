@@ -243,7 +243,7 @@ async def reflect_rca(state: BugState) -> BugState:
 
             verdict = result.stdout.strip()
 
-        if "VALID" in verdict.upper():
+        if verdict.upper().strip() == "VALID":
             return update_state_timestamp(
                 {
                     **state,
@@ -281,7 +281,9 @@ async def reflect_rca(state: BugState) -> BugState:
     except Exception as e:
         logger.error(f"reflect_rca failed for {ticket_key}: {e}")
         new_reflect_retry = reflect_rca_retry_count + 1
-        next_node = "escalate_blocked" if new_reflect_retry >= MAX_ANALYSIS_RETRIES else "reflect_rca"
+        next_node = (
+            "escalate_blocked" if new_reflect_retry >= MAX_ANALYSIS_RETRIES else "reflect_rca"
+        )
         return {
             **state,
             "last_error": str(e),

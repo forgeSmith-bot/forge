@@ -44,6 +44,7 @@ from forge.workflow.nodes.rca_option_gate import (
 )
 from forge.workflow.nodes.triage import route_triage_gate, triage_check, triage_gate
 from forge.workflow.nodes.workspace_setup import setup_workspace
+from forge.workflow.utils import resolve_shared_resume_node
 
 logger = logging.getLogger(__name__)
 
@@ -68,20 +69,24 @@ def route_entry(state: BugState) -> str:
     if current_node and current_node not in ("entry", "route_entry", "__end__", "", "start"):
         logger.info(f"Resuming bug workflow at node: {current_node}")
 
-        # Triage stage
+        # Shared nodes: same resume mapping across all workflow types
+        shared = resolve_shared_resume_node(current_node)
+        if shared is not None:
+            if shared is END:
+                logger.info(f"Workflow at terminal state '{current_node}', returning END")
+            return shared
+
+        # Bug-specific resume mapping
         if current_node == "triage_check":
             return "triage_check"
         elif current_node == "triage_gate":
             return "triage_gate"
-        # Analysis / reflection stage
         elif current_node in ("analyze_bug", "regenerate_rca"):
             return "analyze_bug"
         elif current_node == "reflect_rca":
             return "reflect_rca"
-        # RCA option gate — backward compat: old rca_approval_gate maps here
         elif current_node in ("rca_option_gate", "rca_approval_gate"):
             return "rca_option_gate"
-        # Planning stage
         elif current_node == "plan_bug_fix":
             return "plan_bug_fix"
         elif current_node == "plan_approval_gate":
@@ -90,42 +95,22 @@ def route_entry(state: BugState) -> str:
             return "regenerate_plan"
         elif current_node == "decompose_plan":
             return "decompose_plan"
-        # Post-merge
         elif current_node == "post_merge_summary":
             return "post_merge_summary"
-        # Implementation stage (preserved for backward compat)
         elif current_node == "setup_workspace":
             return "setup_workspace"
         elif current_node == "implement_bug_fix":
             return "implement_bug_fix"
-        elif current_node == "local_review":
-            return "local_review"
         elif current_node == "create_pr":
             return "create_pr"
         elif current_node == "teardown_workspace":
             return "teardown_workspace"
-        # CI stage
-        elif current_node in ("ci_evaluator", "attempt_ci_fix", "wait_for_ci_gate"):
-            return "ci_evaluator"
-        # Review stage
-        elif current_node == "update_documentation":
-            return "update_documentation"
-        elif current_node in ("ai_review", "human_review_gate"):
-            return "human_review_gate"
-        elif current_node == "implement_review":
-            return "implement_review"
-        elif current_node == "review_response_gate":
-            return "review_response_gate"
-        # Blocked / terminal
+        elif current_node in ("wait_for_ci_gate", "ai_review"):
+            return "ci_evaluator" if current_node == "wait_for_ci_gate" else "human_review_gate"
         elif current_node == "escalate_blocked":
             return "escalate_blocked"
-        elif current_node == "complete":
-            logger.info(
-                f"Workflow at terminal state '{current_node}', returning END")
-            return END
         else:
-            logger.warning(
-                f"Unrecognized current_node '{current_node}', restarting from triage")
+            logger.warning(f"Unrecognized current_node '{current_node}', restarting from triage")
 
     # New bugs and unrecognized states start at triage
     return "triage_check"
@@ -243,7 +228,7 @@ def _route_after_answer_bug(state: BugState) -> str:
 
 def _route_after_local_review(state: BugState) -> str:
     """Route after local_review considering qualitative verdict and retry count."""
-    from forge.workflow.nodes.local_reviewer import MAX_REVIEW_ATTEMPTS, _QUALITATIVE_CAP
+    from forge.workflow.nodes.local_reviewer import _QUALITATIVE_CAP, MAX_REVIEW_ATTEMPTS
 
     verdict = state.get("local_review_verdict")
     retry_count = state.get("qualitative_retry_count", 0)
@@ -275,7 +260,7 @@ def _route_after_workspace_setup(
 
 def _route_after_implementation(
     state: BugState,
-) -> Literal["local_review", "escalate_blocked"]:
+) -> Literal["local_review", "implement_bug_fix", "escalate_blocked"]:
     """Route based on bug fix implementation status.
 
     Uses last_error as the failure signal — implement_task (ContainerRunner)
@@ -287,8 +272,7 @@ def _route_after_implementation(
 
     if last_error:
         if retry_count >= max_retries:
-            logger.error(
-                f"Implementation retry limit ({max_retries}) exceeded: {last_error}")
+            logger.error(f"Implementation retry limit ({max_retries}) exceeded: {last_error}")
             return "escalate_blocked"
         # Transient failure within retry budget — loop back so the same node retries
         return "implement_bug_fix"
@@ -607,6 +591,7 @@ def build_bug_graph() -> StateGraph:
             "wait_for_ci_gate": "ci_evaluator",
             "review_response_gate": "review_response_gate",
             "implement_review": "implement_review",
+            "human_review_gate": "human_review_gate",
             "escalate_blocked": "escalate_blocked",
         },
     )
