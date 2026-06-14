@@ -114,7 +114,9 @@ async def _update_prd_proposal_pr(
             sha=file_meta["sha"],
         )
         await gh.create_issue_comment(
-            owner, repo, pr_number,
+            owner,
+            repo,
+            pr_number,
             "PRD has been revised based on feedback. Please review the updated version.",
         )
     finally:

@@ -161,10 +161,9 @@ class OrchestratorWorker:
 
         payload = message.payload
         repo_full = payload.get("repository", {}).get("full_name", "")
-        event_pr_number = (
-            payload.get("pull_request", {}).get("number")
-            or payload.get("issue", {}).get("number")
-        )
+        event_pr_number = payload.get("pull_request", {}).get("number") or payload.get(
+            "issue", {}
+        ).get("number")
 
         return repo_full == prd_pr_repo and event_pr_number == prd_pr_number
 
