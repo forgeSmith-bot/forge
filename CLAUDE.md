@@ -124,12 +124,21 @@ Skip-gate commands are only active at CI stages (`wait_for_ci_gate`, `ci_evaluat
 
 ## PRD Approval via GitHub PR
 
-When `PRD_APPROVAL_MODE=github-pr`, Forge opens a PR in the configured proposals repo instead of posting the PRD to Jira. Reviewer feedback triggers regeneration; merging the PR signals approval.
+Opt-in per project via Jira project property. When configured, Forge opens a PR in the proposals repo instead of posting the PRD to Jira. Reviewer feedback triggers regeneration; merging the PR signals approval.
+
+**Per-project config (Jira project property):**
+
+| Property | Example | Description |
+|----------|---------|-------------|
+| `forge.prd_proposals_repo` | `org/enhancement-proposals` | Enables PR-based PRD approval for this project |
+
+Set via: `jira project-property set <PROJECT> forge.prd_proposals_repo "owner/repo"`
+
+**Global fallbacks (`.env`, used when `FORGE_REQUIRE_PROJECT_CONFIG=false`):**
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `PRD_APPROVAL_MODE` | `jira` | `jira` for label-based, `github-pr` for PR-based |
-| `PRD_PROPOSALS_REPO` | (empty) | `owner/repo` of the proposals repo (required for `github-pr`) |
+| `PRD_PROPOSALS_REPO` | (empty) | Fallback `owner/repo` for projects without the property |
 | `PRD_PROPOSALS_PATH` | `proposals` | Directory in the repo for PRD files |
 
 Branch naming convention: `forge/prd/{ticket-key}` (e.g., `forge/prd/proj-123`).

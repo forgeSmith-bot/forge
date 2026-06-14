@@ -115,24 +115,20 @@ class Settings(BaseSettings):
         ),
     )
 
-    # PRD Approval Configuration
-    prd_approval_mode: str = Field(
-        default="jira",
-        description="PRD approval mechanism: 'jira' (label-based) or 'github-pr' (PR-based)",
-    )
+    # PRD Approval Configuration (global fallbacks — per-project config via
+    # Jira project property forge.prd_proposals_repo takes precedence)
     prd_proposals_repo: str = Field(
         default="",
-        description="GitHub repo (owner/repo) for enhancement proposals. Required when prd_approval_mode='github-pr'.",
+        description=(
+            "Global fallback GitHub repo (owner/repo) for enhancement proposals. "
+            "Per-project config via Jira project property forge.prd_proposals_repo "
+            "takes precedence. Only used when forge_require_project_config is False."
+        ),
     )
     prd_proposals_path: str = Field(
         default="proposals",
         description="Directory in the proposals repo where PRD files are stored.",
     )
-
-    @property
-    def prd_uses_github_pr(self) -> bool:
-        """Check if PRD approval uses GitHub PR flow."""
-        return self.prd_approval_mode == "github-pr"
 
     @property
     def known_repos(self) -> list[str]:

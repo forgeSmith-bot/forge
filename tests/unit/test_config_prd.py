@@ -4,7 +4,7 @@ from forge.config import Settings
 
 
 class TestPrdApprovalConfig:
-    def test_default_prd_approval_mode_is_jira(self):
+    def test_default_proposals_repo_is_empty(self):
         settings = Settings(
             jira_base_url="https://test.atlassian.net",
             jira_api_token="test",
@@ -12,28 +12,7 @@ class TestPrdApprovalConfig:
             github_token="test",
             anthropic_api_key="test",
         )
-        assert settings.prd_approval_mode == "jira"
-
-    def test_prd_uses_github_pr_false_by_default(self):
-        settings = Settings(
-            jira_base_url="https://test.atlassian.net",
-            jira_api_token="test",
-            jira_user_email="test@example.com",
-            github_token="test",
-            anthropic_api_key="test",
-        )
-        assert settings.prd_uses_github_pr is False
-
-    def test_prd_uses_github_pr_true_when_set(self):
-        settings = Settings(
-            jira_base_url="https://test.atlassian.net",
-            jira_api_token="test",
-            jira_user_email="test@example.com",
-            github_token="test",
-            anthropic_api_key="test",
-            prd_approval_mode="github-pr",
-        )
-        assert settings.prd_uses_github_pr is True
+        assert settings.prd_proposals_repo == ""
 
     def test_default_proposals_path(self):
         settings = Settings(
@@ -45,12 +24,13 @@ class TestPrdApprovalConfig:
         )
         assert settings.prd_proposals_path == "proposals"
 
-    def test_default_proposals_repo_is_empty(self):
+    def test_proposals_repo_can_be_set_as_global_fallback(self):
         settings = Settings(
             jira_base_url="https://test.atlassian.net",
             jira_api_token="test",
             jira_user_email="test@example.com",
             github_token="test",
             anthropic_api_key="test",
+            prd_proposals_repo="org/proposals",
         )
-        assert settings.prd_proposals_repo == ""
+        assert settings.prd_proposals_repo == "org/proposals"

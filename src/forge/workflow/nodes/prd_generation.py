@@ -26,14 +26,39 @@ def _slugify(text: str, max_length: int = 60) -> str:
     return slug[:max_length]
 
 
+async def _resolve_prd_proposals_repo(project_key: str, jira: JiraClient) -> str | None:
+    """Resolve the PRD proposals repo for a project.
+
+    Checks the Jira project property first (forge.prd_proposals_repo),
+    then falls back to the global env var when project config is not required.
+
+    Returns:
+        Repo string in "owner/repo" format, or None if not configured.
+    """
+    proposals_repo = await jira.get_prd_proposals_repo(project_key)
+    if proposals_repo:
+        return proposals_repo
+
+    settings = get_settings()
+    if not settings.forge_require_project_config and settings.prd_proposals_repo:
+        logger.info(
+            f"Project {project_key}: using global fallback PRD proposals repo: "
+            f"{settings.prd_proposals_repo}"
+        )
+        return settings.prd_proposals_repo
+
+    return None
+
+
 async def _create_prd_proposal_pr(
     ticket_key: str,
     prd_content: str,
     summary: str,
+    proposals_repo: str,
 ) -> dict[str, Any]:
     """Create a PR with the PRD in the enhancement proposals repo."""
     settings = get_settings()
-    owner, repo = settings.prd_proposals_repo.split("/", 1)
+    owner, repo = proposals_repo.split("/", 1)
     branch = f"forge/prd/{ticket_key.lower()}"
     file_path = f"{settings.prd_proposals_path}/{ticket_key}-{_slugify(summary)}.md"
 
@@ -70,7 +95,7 @@ async def _create_prd_proposal_pr(
         return {
             "prd_pr_url": pr_url,
             "prd_pr_number": pr_number,
-            "prd_pr_repo": settings.prd_proposals_repo,
+            "prd_pr_repo": proposals_repo,
             "prd_pr_branch": branch,
         }
     finally:
@@ -85,7 +110,7 @@ async def _update_prd_proposal_pr(
 ) -> None:
     """Push updated PRD content to the existing proposal PR branch."""
     settings = get_settings()
-    owner, repo = settings.prd_proposals_repo.split("/", 1)
+    owner, repo = state["prd_pr_repo"].split("/", 1)
     branch = state["prd_pr_branch"]
     pr_number = state["prd_pr_number"]
     proposals_path = settings.prd_proposals_path
@@ -170,14 +195,17 @@ async def generate_prd(state: WorkflowState) -> WorkflowState:
         prd_content = await agent.generate_prd(raw_requirements, context)
 
         # Publish PRD - either as GitHub PR or Jira update
+        # Per-project opt-in: check forge.prd_proposals_repo project property
+        proposals_repo = await _resolve_prd_proposals_repo(issue.project_key, jira)
         settings = get_settings()
         prd_pr_result = None
         try:
-            if settings.prd_uses_github_pr:
+            if proposals_repo:
                 prd_pr_result = await _create_prd_proposal_pr(
                     ticket_key=ticket_key,
                     prd_content=prd_content,
                     summary=issue.summary,
+                    proposals_repo=proposals_repo,
                 )
             else:
                 if settings.jira_store_in_comments:
@@ -274,10 +302,10 @@ async def regenerate_prd_with_feedback(state: WorkflowState) -> WorkflowState:
         )
 
         # Publish revised PRD
-        settings = get_settings()
-        if settings.prd_uses_github_pr and state.get("prd_pr_number"):
+        if state.get("prd_pr_number"):
             await _update_prd_proposal_pr(ticket_key, new_prd, state)
         else:
+            settings = get_settings()
             if settings.jira_store_in_comments:
                 await jira.add_structured_comment(
                     ticket_key,

@@ -73,6 +73,7 @@ class TestCreatePrdProposalPr:
                 ticket_key="TEST-123",
                 prd_content="# My PRD",
                 summary="My Feature",
+                proposals_repo="org/proposals",
             )
 
         assert result["prd_pr_number"] == 7
