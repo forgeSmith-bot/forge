@@ -19,7 +19,7 @@ _QUESTION_MARK_PATTERN = re.compile(r"^\s*\?")
 
 
 def classify_comment(comment_text: str) -> CommentType:
-    """Classify a Jira comment into question or feedback.
+    """Classify a comment into question or feedback.
 
     Classification rules:
     - Questions: Comments starting with '?' or '@forge ask' (case-insensitive)

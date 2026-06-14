@@ -122,6 +122,18 @@ podman rm $(podman ps -a --filter name=forge- -q)
 
 Skip-gate commands are only active at CI stages (`wait_for_ci_gate`, `ci_evaluator`, `attempt_ci_fix`). Rebase works from any workflow stage.
 
+## PRD Approval via GitHub PR
+
+When `PRD_APPROVAL_MODE=github-pr`, Forge opens a PR in the configured proposals repo instead of posting the PRD to Jira. Reviewer feedback triggers regeneration; merging the PR signals approval.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `PRD_APPROVAL_MODE` | `jira` | `jira` for label-based, `github-pr` for PR-based |
+| `PRD_PROPOSALS_REPO` | (empty) | `owner/repo` of the proposals repo (required for `github-pr`) |
+| `PRD_PROPOSALS_PATH` | `proposals` | Directory in the repo for PRD files |
+
+Branch naming convention: `forge/prd/{ticket-key}` (e.g., `forge/prd/proj-123`).
+
 ## Container Execution
 
 Tasks are implemented in ephemeral Podman containers:
