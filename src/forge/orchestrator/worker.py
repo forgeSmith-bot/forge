@@ -798,10 +798,15 @@ class OrchestratorWorker:
             elif "pull_request" in event and payload.get("pull_request", {}).get("merged") is True:
                 is_approved = True
                 logger.info(f"PRD PR merged for {message.ticket_key}")
-                # Sync Jira label
                 jira = JiraClient()
                 try:
                     await jira.set_workflow_label(message.ticket_key, ForgeLabel.PRD_APPROVED)
+                    prd_content = current_state.get("prd_content", "")
+                    if prd_content:
+                        await jira.update_description(message.ticket_key, prd_content)
+                        logger.info(
+                            f"Copied approved PRD to Jira description for {message.ticket_key}"
+                        )
                 finally:
                     await jira.close()
 

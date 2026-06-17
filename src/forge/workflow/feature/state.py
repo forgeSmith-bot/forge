@@ -40,7 +40,8 @@ class FeatureState(
     parallel_total_branches: int | None
 
     # Q&A mode
-    qa_history: list[dict[str, str]]  # List of {question, answer, artifact_type, timestamp}
+    # List of {question, answer, artifact_type, timestamp}
+    qa_history: list[dict[str, str]]
     generation_context: dict[str, Any]  # Stored context from generation
     is_question: bool  # Current comment is a question (not feedback)
 

@@ -96,7 +96,7 @@ async def _create_prd_proposal_pr(
         await jira.set_workflow_label(ticket_key, ForgeLabel.PRD_PENDING)
         await jira.add_comment(
             ticket_key,
-            f"PRD published for review: {pr_url}",
+            f"PRD published for review: [GitHub PR]({pr_url})",
         )
 
         return {
