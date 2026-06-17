@@ -793,29 +793,29 @@ class OrchestratorWorker:
                 return current_state
 
             # At approval gates with no error, retry means "regenerate" not "advance".
-            # Route back to the generation node so the artifact is reproduced.
-            gate_to_generation_node = {
-                "prd_approval_gate": "generate_prd",
-                "spec_approval_gate": "generate_spec",
-                "plan_approval_gate": "decompose_epics",
-                "task_approval_gate": "generate_tasks",
-                "plan_approval_gate_bug": "plan_bug_fix",
+            # Set revision_requested=True so route_*_approval routes to regeneration,
+            # not to the approved path (which fires when is_paused=False and no revision).
+            approval_gates = {
+                "prd_approval_gate",
+                "spec_approval_gate",
+                "plan_approval_gate",
+                "task_approval_gate",
+                "plan_approval_gate_bug",
             }
             prev_error = current_state.get("last_error")
-            is_paused_at_gate = current_state.get("is_paused") and current_node in gate_to_generation_node
+            is_paused_at_gate = current_state.get("is_paused") and current_node in approval_gates
             if is_paused_at_gate and not prev_error:
-                regen_node = gate_to_generation_node[current_node]
                 logger.info(
-                    f"Retry at approval gate {current_node} — routing back to {regen_node} "
-                    f"for regeneration"
+                    f"Retry at approval gate {current_node} — triggering regeneration "
+                    f"via revision request"
                 )
                 updated_state["is_paused"] = False
                 updated_state["is_blocked"] = False
                 updated_state["last_error"] = None
-                updated_state["revision_requested"] = False
-                updated_state["feedback_comment"] = None
+                updated_state["revision_requested"] = True
+                updated_state["feedback_comment"] = "Regeneration requested via retry."
                 updated_state["retry_count"] = 0
-                updated_state["current_node"] = regen_node
+                # current_node remains the gate so the graph can correctly route out of it
             else:
                 logger.info(
                     f"Retry requested for {message.ticket_key} at {current_node} "
