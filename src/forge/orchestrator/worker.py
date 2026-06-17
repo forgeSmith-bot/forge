@@ -43,6 +43,15 @@ def _is_workflow_errored(state: dict) -> bool:
 # Supports both start-of-line usage (>option 2) and in-prose usage (let's go with >option 2)
 _OPTION_PATTERN = re.compile(r"(?mi)>option\s+(\d+)")
 
+# Gates where forge:yolo label addition triggers auto-approval and workflow resumption
+_YOLO_GATES = {
+    "prd_approval_gate",
+    "spec_approval_gate",
+    "plan_approval_gate",
+    "task_approval_gate",
+    "rca_option_gate",
+}
+
 
 class OrchestratorWorker:
     """Worker that processes workflow events from Redis queue."""
@@ -490,6 +499,16 @@ class OrchestratorWorker:
         for change in label_changes:
             to_labels = change.get("toString", "")
             from_labels = change.get("fromString", "")
+
+            # Check for yolo label addition — activate yolo mode if at a gate
+            if "forge:yolo" in to_labels and "forge:yolo" not in from_labels:
+                if current_node in _YOLO_GATES:
+                    logger.info(
+                        f"forge:yolo label added for {message.ticket_key} at {current_node} "
+                        "— activating yolo mode"
+                    )
+                    updated_state["yolo_mode"] = True
+                    updated_state["is_paused"] = False
 
             # Check for retry label - triggers retry of current stage
             if "forge:retry" in to_labels.lower() and "forge:retry" not in from_labels.lower():

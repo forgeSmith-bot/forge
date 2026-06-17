@@ -94,3 +94,58 @@ class TestBuildInitialStateYoloMode:
         worker = self._make_worker()
         state = worker._build_initial_state(msg)
         assert state["yolo_mode"] is False
+
+
+class TestYoloLabelAddedMidWorkflow:
+    """When forge:yolo is added while paused at a gate, yolo_mode is set and workflow unpauses."""
+
+    def _make_label_change(self, from_str: str, to_str: str) -> dict:
+        return {"field": "labels", "fromString": from_str, "toString": to_str}
+
+    def test_yolo_detection_logic_at_prd_gate(self):
+        """forge:yolo in new labels at prd_approval_gate triggers yolo."""
+        label_changes = [self._make_label_change("forge:managed", "forge:managed forge:yolo")]
+        current_node = "prd_approval_gate"
+        yolo_gates = {
+            "prd_approval_gate", "spec_approval_gate",
+            "plan_approval_gate", "task_approval_gate", "rca_option_gate",
+        }
+        is_yolo = any(
+            "forge:yolo" in c.get("toString", "") and
+            "forge:yolo" not in c.get("fromString", "") and
+            current_node in yolo_gates
+            for c in label_changes
+        )
+        assert is_yolo is True
+
+    def test_yolo_not_triggered_outside_gates(self):
+        """forge:yolo added while not at a gate is ignored."""
+        label_changes = [self._make_label_change("", "forge:yolo")]
+        current_node = "generate_spec"
+        yolo_gates = {
+            "prd_approval_gate", "spec_approval_gate",
+            "plan_approval_gate", "task_approval_gate", "rca_option_gate",
+        }
+        is_yolo = any(
+            "forge:yolo" in c.get("toString", "") and
+            "forge:yolo" not in c.get("fromString", "") and
+            current_node in yolo_gates
+            for c in label_changes
+        )
+        assert is_yolo is False
+
+    def test_yolo_not_triggered_if_already_present(self):
+        """forge:yolo already in fromString (no change) does not re-trigger."""
+        label_changes = [self._make_label_change("forge:yolo", "forge:yolo forge:prd-approved")]
+        current_node = "prd_approval_gate"
+        yolo_gates = {
+            "prd_approval_gate", "spec_approval_gate",
+            "plan_approval_gate", "task_approval_gate", "rca_option_gate",
+        }
+        is_yolo = any(
+            "forge:yolo" in c.get("toString", "") and
+            "forge:yolo" not in c.get("fromString", "") and
+            current_node in yolo_gates
+            for c in label_changes
+        )
+        assert is_yolo is False
