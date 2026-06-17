@@ -943,6 +943,29 @@ class JiraClient:
         logger.info(f"Project {project_key}: default repo: {value}")
         return value
 
+    async def get_prd_proposals_repo(self, project_key: str) -> str | None:
+        """Fetch the forge.prd_proposals_repo project property.
+
+        When set, enables PRD approval via GitHub PR for this project.
+        The value is a GitHub repo in "owner/repo" format.
+
+        Args:
+            project_key: The Jira project key.
+
+        Returns:
+            Repo string in "owner/repo" format, or None if not configured.
+        """
+        value = await self.get_project_property(project_key, "forge.prd_proposals_repo")
+        if value is None:
+            return None
+        if not isinstance(value, str) or "/" not in value:
+            logger.warning(
+                f"forge.prd_proposals_repo for project {project_key} is malformed: {value!r}"
+            )
+            return None
+        logger.info(f"Project {project_key}: PRD proposals repo: {value}")
+        return value
+
     async def get_skills_config(self, project_key: str) -> list[SkillEntry] | None:
         """Fetch and parse the forge.skills project property.
 

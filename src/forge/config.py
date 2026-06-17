@@ -115,6 +115,21 @@ class Settings(BaseSettings):
         ),
     )
 
+    # PRD Approval Configuration (global fallbacks — per-project config via
+    # Jira project property forge.prd_proposals_repo takes precedence)
+    prd_proposals_repo: str = Field(
+        default="",
+        description=(
+            "Global fallback GitHub repo (owner/repo) for enhancement proposals. "
+            "Per-project config via Jira project property forge.prd_proposals_repo "
+            "takes precedence. Only used when forge_require_project_config is False."
+        ),
+    )
+    prd_proposals_path: str = Field(
+        default="proposals",
+        description="Directory in the proposals repo where PRD files are stored.",
+    )
+
     @property
     def known_repos(self) -> list[str]:
         """Get list of known repositories."""

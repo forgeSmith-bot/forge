@@ -41,6 +41,7 @@ class TestGeneratePrd:
         mock.update_description = AsyncMock()
         mock.set_workflow_label = AsyncMock()
         mock.add_structured_comment = AsyncMock()
+        mock.get_prd_proposals_repo = AsyncMock(return_value=None)
         mock.close = AsyncMock()
         return mock
 
@@ -154,6 +155,7 @@ class TestRegeneratePrdWithFeedback:
         mock.update_description = AsyncMock()
         mock.add_structured_comment = AsyncMock()
         mock.add_comment = AsyncMock()
+        mock.get_prd_proposals_repo = AsyncMock(return_value=None)
         mock.close = AsyncMock()
         return mock
 
