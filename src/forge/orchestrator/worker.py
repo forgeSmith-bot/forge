@@ -378,6 +378,7 @@ class OrchestratorWorker:
         is_retry = False
         is_question = False
         is_ci_webhook = False
+        is_yolo = False
         pr_merged = False
         feedback = None
 
@@ -507,8 +508,7 @@ class OrchestratorWorker:
                         f"forge:yolo label added for {message.ticket_key} at {current_node} "
                         "— activating yolo mode"
                     )
-                    updated_state["yolo_mode"] = True
-                    updated_state["is_paused"] = False
+                    is_yolo = True
 
             # Check for retry label - triggers retry of current stage
             if "forge:retry" in to_labels.lower() and "forge:retry" not in from_labels.lower():
@@ -850,6 +850,9 @@ class OrchestratorWorker:
                 # Keep current_node — workflow resumes from the node that failed
         elif is_ci_webhook:
             # GitHub CI event — unpause the gate and let ci_evaluator check the results
+            updated_state["is_paused"] = False
+        elif is_yolo:
+            updated_state["yolo_mode"] = True
             updated_state["is_paused"] = False
         elif is_approved:
             updated_state["is_paused"] = False
