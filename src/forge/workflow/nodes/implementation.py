@@ -18,7 +18,9 @@ from forge.config import get_settings
 from forge.integrations.jira.client import JiraClient
 from forge.sandbox import ContainerRunner
 from forge.workflow.feature.state import FeatureState as WorkflowState
+from forge.workflow.nodes.error_handler import notify_error
 from forge.workflow.utils import update_state_timestamp
+from forge.workflow.utils.jira_status import post_status_comment
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.manager import Workspace
 
@@ -98,6 +100,7 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
             {
                 **state,
                 "current_node": "local_review",
+                "local_review_pass_number": 1,
                 "last_error": None,
             }
         )
@@ -113,13 +116,12 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
         task_description = task_issue.description or ""
         task_summary = task_issue.summary
 
-        try:
-            await jira.add_comment(
-                ticket_key,
-                f"Implementation started for [{current_task}]: {task_summary}",
-            )
-        except Exception:
-            logger.warning(f"Failed to post implementation-started comment for {current_task}")
+        # Post status comment at task implementation start
+        await post_status_comment(
+            jira,
+            current_task,
+            f"🔨 Forge started implementing [{current_task}]: {task_summary}",
+        )
 
         # Get guardrails context
         guardrails = state.get("context", {}).get("guardrails", "")
@@ -150,6 +152,13 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
         if result.success:
             logger.info(f"Container completed successfully for {current_task}")
 
+            # Post status comment at task implementation completion
+            await post_status_comment(
+                jira,
+                current_task,
+                "✅ Implementation complete. Running local code review before PR.",
+            )
+
             # Track implemented tasks
             implemented = state.get("implemented_tasks", [])
             implemented.append(current_task)
@@ -174,8 +183,6 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
 
     except Exception as e:
         logger.error(f"Implementation failed for {current_task}: {e}")
-        from forge.workflow.nodes.error_handler import notify_error
-
         await notify_error(state, str(e), "implement_task")
         return {
             **state,

@@ -54,6 +54,7 @@ class PRIntegrationState(TypedDict, total=False):
     fork_repo: str | None
     merge_conflicts: list[str]
     local_review_attempts: int
+    local_review_pass_number: int
 
 
 class CIIntegrationState(TypedDict, total=False):
@@ -63,6 +64,8 @@ class CIIntegrationState(TypedDict, total=False):
     ci_failed_checks: list[dict[str, Any]]
     ci_fix_attempts: int
     ci_skipped_checks: list[str]
+    current_attempt: int
+    max_attempts: int
 
 
 class ReviewIntegrationState(TypedDict, total=False):

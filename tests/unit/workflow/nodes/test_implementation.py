@@ -57,8 +57,8 @@ def _make_successful_runner():
 class TestImplementTaskStartedComment:
 
     @pytest.mark.asyncio
-    async def test_posts_comment_on_parent_ticket_before_container(self):
-        """A comment is posted on the parent ticket naming the task being started."""
+    async def test_posts_comment_on_task_ticket_before_container(self):
+        """A comment is posted on the task ticket (not parent) when implementation starts."""
         from forge.workflow.nodes.implementation import implement_task
 
         mock_jira = _make_mock_jira(summary="Fix null pointer in AuthService")
@@ -77,14 +77,14 @@ class TestImplementTaskStartedComment:
         ):
             await implement_task(_make_state())
 
-        mock_jira.add_comment.assert_called_once_with(
-            "BUG-123",
-            "Implementation started for [TASK-456]: Fix null pointer in AuthService",
+        mock_jira.add_comment.assert_any_call(
+            "TASK-456",
+            "🔨 Forge started implementing [TASK-456]: Fix null pointer in AuthService",
         )
 
     @pytest.mark.asyncio
     async def test_comment_mentions_correct_task_key(self):
-        """The comment body contains the child task key, not the parent key."""
+        """The comment body contains the child task key and summary."""
         from forge.workflow.nodes.implementation import implement_task
 
         mock_jira = _make_mock_jira(summary="Add retry logic")
@@ -109,8 +109,8 @@ class TestImplementTaskStartedComment:
                 )
             )
 
-        call_args = mock_jira.add_comment.call_args
-        assert call_args[0][0] == "FEAT-99"
+        call_args = mock_jira.add_comment.call_args_list[0]
+        assert call_args[0][0] == "TASK-100"
         assert "TASK-100" in call_args[0][1]
         assert "Add retry logic" in call_args[0][1]
 

@@ -6,6 +6,13 @@ from typing import Any
 from langgraph.graph import END
 
 from forge.workflow.utils.comment_classifier import CommentType, classify_comment
+from forge.workflow.utils.jira_status import (
+    post_status_comment,
+    remove_implementing_label,
+    set_ci_pending_label,
+    set_implementing_label,
+    transition_tasks_to_in_progress,
+)
 from forge.workflow.utils.qa_summary import post_qa_summary_if_needed
 
 # Nodes whose resume mapping is identical across all workflow types.
@@ -76,9 +83,14 @@ __all__ = [
     "CommentType",
     "classify_comment",
     "post_qa_summary_if_needed",
+    "post_status_comment",
+    "remove_implementing_label",
     "resolve_shared_resume_node",
     "resume_state",
+    "set_ci_pending_label",
     "set_error",
+    "set_implementing_label",
     "set_paused",
+    "transition_tasks_to_in_progress",
     "update_state_timestamp",
 ]
