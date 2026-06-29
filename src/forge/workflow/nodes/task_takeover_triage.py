@@ -6,7 +6,7 @@ Proposed Solution/Approach, and Acceptance Criteria) before starting plan genera
 
 import json
 import logging
-from typing import Any, cast
+from typing import cast
 
 from forge.config import get_settings
 from forge.integrations.agents import ForgeAgent

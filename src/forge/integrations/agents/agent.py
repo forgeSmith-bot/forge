@@ -1162,7 +1162,9 @@ NOTE: No repositories configured. Use REPO: unknown for now."""
         ticket_type = context.get("ticket_type")
         ticket_type_str = ""
         if ticket_type is not None:
-            ticket_type_str = ticket_type.value if hasattr(ticket_type, "value") else str(ticket_type)
+            ticket_type_str = (
+                ticket_type.value if hasattr(ticket_type, "value") else str(ticket_type)
+            )
 
         if (
             artifact_type == "plan"
