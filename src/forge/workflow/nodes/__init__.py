@@ -63,6 +63,7 @@ from forge.workflow.nodes.task_router import (
     route_tasks_parallel,
     should_use_parallel_execution,
 )
+from forge.workflow.nodes.task_takeover_planning import generate_plan
 from forge.workflow.nodes.task_takeover_triage import triage_task
 from forge.workflow.nodes.triage import route_triage_gate, triage_check, triage_gate
 from forge.workflow.nodes.workspace_setup import (
@@ -123,6 +124,8 @@ __all__ = [
     "route_triage_gate",
     # Task takeover workflow — triage
     "triage_task",
+    # Task takeover workflow — planning
+    "generate_plan",
     # Bug workflow — RCA analysis
     "analyze_bug",
     "reflect_rca",

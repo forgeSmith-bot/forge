@@ -4,18 +4,20 @@ This module builds the LangGraph StateGraph for the Task Takeover workflow.
 """
 
 import logging
-from typing import Any, cast
+from typing import Any
 
 from langgraph.graph import END, StateGraph
 
 from forge.workflow.nodes import (
     escalate_to_blocked,
+    generate_plan,
     route_triage_gate,
     triage_gate,
     triage_task,
 )
+from forge.workflow.nodes.task_takeover_planning import plan_approval_gate, route_plan_approval
 from forge.workflow.task_takeover.state import TaskTakeoverState
-from forge.workflow.utils import resolve_shared_resume_node, set_paused
+from forge.workflow.utils import resolve_shared_resume_node
 
 logger = logging.getLogger(__name__)
 
@@ -70,34 +72,6 @@ def _route_after_triage_check(state: TaskTakeoverState) -> str:
     if node in ("triage_gate", "escalate_blocked"):
         return node
     return "triage_gate"
-
-
-async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
-    """Generate task takeover plan.
-
-    Args:
-        state: Current task takeover workflow state.
-
-    Returns:
-        Updated state.
-    """
-    return {
-        **state,
-        "current_node": "plan_approval_gate",
-        "plan_content": "Task Takeover Plan Content",
-    }
-
-
-def plan_approval_gate(state: TaskTakeoverState) -> TaskTakeoverState:
-    """Pause and wait for plan approval.
-
-    Args:
-        state: Current task takeover workflow state.
-
-    Returns:
-        State with is_paused=True and current_node=plan_approval_gate.
-    """
-    return cast(TaskTakeoverState, set_paused(cast(dict[str, Any], state), "plan_approval_gate"))
 
 
 def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
@@ -158,8 +132,11 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     graph.add_edge("generate_plan", "plan_approval_gate")
     graph.add_conditional_edges(
         "plan_approval_gate",
-        lambda s: END if s.get("is_paused") else END,
-        {END: END},
+        route_plan_approval,
+        {
+            "generate_plan": "generate_plan",
+            END: END,
+        },
     )
 
     graph.add_edge("escalate_blocked", END)
