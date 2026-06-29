@@ -28,6 +28,7 @@ class TaskTakeoverSettings(BaseModel):
     issue_types: list[str] = Field(default_factory=list)
     labels: TaskTakeoverLabels = Field(default_factory=TaskTakeoverLabels)
     require_tests: bool = True
+    review_max_attempts: int = 2
 
 
 class Settings(BaseSettings):
