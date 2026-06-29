@@ -16,9 +16,7 @@ class MockWorkflow(BaseWorkflow):
     def state_schema(self) -> type:
         return BaseState
 
-    def matches(
-        self, ticket_type: TicketType, _labels: list[str], _event: dict
-    ) -> bool:
+    def matches(self, ticket_type: TicketType, _labels: list[str], _event: dict) -> bool:
         return ticket_type == TicketType.FEATURE
 
     def build_graph(self) -> StateGraph:
@@ -38,9 +36,7 @@ class MockBugWorkflow(BaseWorkflow):
     def state_schema(self) -> type:
         return BaseState
 
-    def matches(
-        self, ticket_type: TicketType, _labels: list[str], _event: dict
-    ) -> bool:
+    def matches(self, ticket_type: TicketType, _labels: list[str], _event: dict) -> bool:
         return ticket_type == TicketType.BUG
 
     def build_graph(self) -> StateGraph:
@@ -126,3 +122,35 @@ class TestWorkflowRouter:
         assert len(workflows) == 2
         assert workflows[0]["name"] == "mock"
         assert workflows[1]["name"] == "mock_bug"
+
+    def test_resolve_exact_matching_no_accidental_prefix_triggers(self):
+        """Verify that prefix-based triggers do not resolve to TaskTakeoverWorkflow."""
+        from forge.workflow.router import WorkflowRouter
+        from forge.workflow.task_takeover import TaskTakeoverWorkflow
+
+        router = WorkflowRouter()
+        router.register(TaskTakeoverWorkflow)
+
+        # Labels starting with triggers but are not exact matches should not resolve
+        prefix_labels_cases = [
+            ["forge:managed", "forge:task-takeover-fake"],
+            ["forge:managed", "forge:managed:task-fake"],
+            ["forge:managed", "forge:managed:task-takeover-fake"],
+        ]
+
+        for labels in prefix_labels_cases:
+            workflow = router.resolve(
+                ticket_type=TicketType.BUG,
+                labels=labels,
+                event={},
+            )
+            assert workflow is None, f"Accidentally resolved with prefix-trigger labels: {labels}"
+
+        # An exact match still resolves correctly
+        workflow = router.resolve(
+            ticket_type=TicketType.BUG,
+            labels=["forge:managed", "forge:task-takeover"],
+            event={},
+        )
+        assert workflow is not None
+        assert workflow.name == "task_takeover"
