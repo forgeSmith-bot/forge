@@ -14,9 +14,13 @@ from forge.workflow.gates.task_plan_approval import (
 )
 from forge.workflow.nodes import (
     answer_question,
+    create_task_takeover_pr,
     escalate_to_blocked,
+    execute_task_changes,
     generate_plan,
     route_triage_gate,
+    run_qualitative_review,
+    setup_workspace,
     triage_gate,
     triage_task,
 )
@@ -59,6 +63,14 @@ def route_entry(state: TaskTakeoverState) -> str:
             return "generate_plan"
         elif current_node == "task_plan_approval_gate":
             return "task_plan_approval_gate"
+        elif current_node == "setup_workspace":
+            return "setup_workspace"
+        elif current_node == "execute_task_changes":
+            return "execute_task_changes"
+        elif current_node == "qualitative_review":
+            return "run_qualitative_review"
+        elif current_node == "create_task_takeover_pr":
+            return "create_task_takeover_pr"
         elif current_node == "escalate_blocked":
             return "escalate_blocked"
         else:
@@ -107,6 +119,10 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     graph.add_node("task_plan_approval_gate", task_plan_approval_gate)
     graph.add_node("escalate_blocked", escalate_to_blocked)
     graph.add_node("answer_question", answer_question)
+    graph.add_node("setup_workspace", setup_workspace)
+    graph.add_node("execute_task_changes", execute_task_changes)
+    graph.add_node("run_qualitative_review", run_qualitative_review)
+    graph.add_node("create_task_takeover_pr", create_task_takeover_pr)
 
     # Set entry point
     graph.set_entry_point("route_entry")
@@ -120,6 +136,10 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
             "triage_gate": "triage_gate",
             "generate_plan": "generate_plan",
             "task_plan_approval_gate": "task_plan_approval_gate",
+            "setup_workspace": "setup_workspace",
+            "execute_task_changes": "execute_task_changes",
+            "run_qualitative_review": "run_qualitative_review",
+            "create_task_takeover_pr": "create_task_takeover_pr",
             "escalate_blocked": "escalate_blocked",
             END: END,
         },
@@ -152,10 +172,16 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
         {
             "regenerate_plan": "generate_plan",
             "answer_question": "answer_question",
-            "setup_workspace": END,  # Transitioning to isolated execution is terminal (END) for now in this subgraph
+            "setup_workspace": "setup_workspace",
             END: END,
         },
     )
+
+    # Execution flow
+    graph.add_edge("setup_workspace", "execute_task_changes")
+    graph.add_edge("execute_task_changes", "run_qualitative_review")
+    graph.add_edge("run_qualitative_review", "create_task_takeover_pr")
+    graph.add_edge("create_task_takeover_pr", END)
 
     # Q&A routing
     graph.add_conditional_edges(
