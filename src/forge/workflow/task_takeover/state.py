@@ -21,6 +21,10 @@ class TaskTakeoverState(
     plan_content: str | None
     triage_passed: bool
     triage_missing_fields: list[str]
+    review_verdict: str | None
+    review_feedback: str | None
+    qualitative_review_retry_count: int
+    qualitative_review_failed: bool
 
 
 def create_initial_task_takeover_state(ticket_key: str, **kwargs: Any) -> TaskTakeoverState:
@@ -54,6 +58,10 @@ def create_initial_task_takeover_state(ticket_key: str, **kwargs: Any) -> TaskTa
         "triage_passed": False,
         "triage_missing_fields": [],
         "plan_content": None,
+        "review_verdict": None,
+        "review_feedback": None,
+        "qualitative_review_retry_count": 0,
+        "qualitative_review_failed": False,
     }
     defaults.update(kwargs)
     return cast(TaskTakeoverState, defaults)
