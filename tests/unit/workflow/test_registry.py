@@ -91,3 +91,18 @@ class TestDefaultRouter:
         )
         assert workflow is not None
         assert workflow.name == "bug"
+
+    def test_task_takeover_has_priority_over_bug_workflow(self):
+        """Conflicting labels (e.g. both forge:managed:bug and forge:managed:task) prioritize Task Takeover routing."""
+        from forge.workflow.registry import create_default_router
+
+        router = create_default_router()
+
+        # A Bug ticket with both forge:managed and forge:managed:task should resolve to TaskTakeoverWorkflow, not BugWorkflow
+        workflow = router.resolve(
+            TicketType.BUG,
+            ["forge:managed", "forge:managed:task"],
+            {},
+        )
+        assert workflow is not None
+        assert workflow.name == "task_takeover"
