@@ -1,0 +1,236 @@
+"""Unit tests for task takeover PR creation node."""
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from forge.models.workflow import TicketType
+from forge.workflow.nodes.task_takeover_pr import cleanup_podman_containers, create_task_takeover_pr
+
+
+def _make_state(
+    ticket_key="TASK-123",
+    ticket_type=TicketType.TASK,
+    workspace_path="/tmp/ws",
+    current_repo="acme/backend",
+    implemented_tasks=None,
+):
+    return {
+        "ticket_key": ticket_key,
+        "ticket_type": ticket_type,
+        "current_node": "create_task_takeover_pr",
+        "is_paused": False,
+        "retry_count": 0,
+        "last_error": None,
+        "workspace_path": workspace_path,
+        "current_repo": current_repo,
+        "implemented_tasks": implemented_tasks or [],
+        "context": {"branch_name": "forge/TASK-123", "guardrails": ""},
+    }
+
+
+def _make_mock_jira():
+    jira = AsyncMock()
+    issue = MagicMock()
+    issue.summary = "Implement user authentication"
+    issue.description = "Details of the authentication task"
+    jira.get_issue = AsyncMock(return_value=issue)
+    jira.add_comment = AsyncMock()
+    jira.transition_issue = AsyncMock()
+    jira.close = AsyncMock()
+    return jira
+
+
+def _make_mock_github():
+    github = AsyncMock()
+    github.get_or_create_fork = AsyncMock(
+        return_value={
+            "owner": {"login": "fork-owner"},
+            "name": "backend",
+        }
+    )
+    github.sync_fork_with_upstream = AsyncMock()
+    github.create_pull_request = AsyncMock(
+        return_value={
+            "html_url": "https://github.com/acme/backend/pull/42",
+            "number": 42,
+        }
+    )
+    github.close = AsyncMock()
+    return github
+
+
+def _make_mock_git():
+    git = MagicMock()
+    git.add_fork_remote = MagicMock()
+    git.push_to_fork = MagicMock()
+    return git
+
+
+class TestTaskTakeoverPRNode:
+    """Tests for create_task_takeover_pr node in Task Takeover workflow."""
+
+    @pytest.mark.asyncio
+    @patch("forge.workflow.nodes.task_takeover_pr.teardown_workspace")
+    @patch("forge.workflow.nodes.task_takeover_pr.cleanup_podman_containers")
+    async def test_successful_pr_creation(self, mock_cleanup, mock_teardown) -> None:
+        """Test successful PR creation, commenting, transition and teardown."""
+        state = _make_state()
+        mock_jira = _make_mock_jira()
+        mock_github = _make_mock_github()
+        mock_git = _make_mock_git()
+
+        # We want teardown_workspace to simulate setting workspace_path to None and updating the state
+        async def fake_teardown(s):
+            return {**s, "workspace_path": None, "current_node": "workspace_complete"}
+
+        mock_teardown.side_effect = fake_teardown
+
+        with (
+            patch("forge.workflow.nodes.task_takeover_pr.JiraClient", return_value=mock_jira),
+            patch("forge.workflow.nodes.task_takeover_pr.GitHubClient", return_value=mock_github),
+            patch("forge.workflow.nodes.task_takeover_pr.GitOperations", return_value=mock_git),
+        ):
+            result_state = await create_task_takeover_pr(state)
+
+        # Assert fork integration and push
+        mock_github.get_or_create_fork.assert_called_once_with("acme", "backend")
+        mock_github.sync_fork_with_upstream.assert_called_once_with("fork-owner", "backend")
+        mock_git.add_fork_remote.assert_called_once_with("fork-owner", "backend")
+        mock_git.push_to_fork.assert_called_once()
+
+        # Assert PR creation
+        mock_github.create_pull_request.assert_called_once_with(
+            owner="acme",
+            repo="backend",
+            title="[TASK-123] Implement user authentication",
+            body="This Pull Request implements task takeover for ticket **[TASK-123]**.\n\n### Ticket Description\nDetails of the authentication task\n\nCo-authored-by: Forge <forge@noreply.anthropic.com>",
+            head="fork-owner:forge/TASK-123",
+            base="main",
+        )
+
+        # Assert Jira comment and transition
+        mock_jira.add_comment.assert_called_once()
+        comment_arg = mock_jira.add_comment.call_args[0][1]
+        assert "[PR #42]" in comment_arg
+        assert "https://github.com/acme/backend/pull/42" in comment_arg
+
+        mock_jira.transition_issue.assert_called_once_with("TASK-123", "In Review")
+
+        # Assert cleanup/teardown
+        mock_cleanup.assert_called_once_with("TASK-123")
+        mock_teardown.assert_called_once()
+
+        # Assert resulting state
+        assert result_state["workspace_path"] is None
+        assert result_state["current_pr_url"] == "https://github.com/acme/backend/pull/42"
+        assert result_state["current_pr_number"] == 42
+        assert result_state["fork_owner"] == "fork-owner"
+        assert result_state["fork_repo"] == "backend"
+        assert "https://github.com/acme/backend/pull/42" in result_state["pr_urls"]
+
+    @pytest.mark.asyncio
+    @patch("forge.workflow.nodes.task_takeover_pr.teardown_workspace")
+    @patch("forge.workflow.nodes.task_takeover_pr.cleanup_podman_containers")
+    async def test_pr_creation_missing_workspace(self, mock_cleanup, mock_teardown) -> None:
+        """Test PR creation node fails gracefully when workspace_path is not set."""
+        state = _make_state(workspace_path=None)
+        mock_jira = _make_mock_jira()
+
+        with patch("forge.workflow.nodes.task_takeover_pr.JiraClient", return_value=mock_jira):
+            result_state = await create_task_takeover_pr(state)
+
+        assert "Workspace not set up" in result_state["last_error"]
+        assert result_state["current_node"] == "create_task_takeover_pr"
+        mock_cleanup.assert_not_called()
+        mock_teardown.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("forge.workflow.nodes.task_takeover_pr.teardown_workspace")
+    @patch("forge.workflow.nodes.task_takeover_pr.cleanup_podman_containers")
+    async def test_pr_creation_unrecognized_repo_format(self, mock_cleanup, mock_teardown) -> None:
+        """Test PR creation node fails gracefully when current_repo format is invalid."""
+        state = _make_state(current_repo="invalid-format")
+        mock_jira = _make_mock_jira()
+
+        with patch("forge.workflow.nodes.task_takeover_pr.JiraClient", return_value=mock_jira):
+            result_state = await create_task_takeover_pr(state)
+
+        assert "Invalid repository format" in result_state["last_error"]
+        assert result_state["current_node"] == "create_task_takeover_pr"
+        mock_cleanup.assert_not_called()
+        mock_teardown.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("forge.workflow.nodes.task_takeover_pr.teardown_workspace")
+    @patch("forge.workflow.nodes.task_takeover_pr.cleanup_podman_containers")
+    async def test_pr_creation_api_failure(self, mock_cleanup, mock_teardown) -> None:
+        """Test node handles API errors gracefully, recording error and incrementing retry count."""
+        state = _make_state()
+        mock_jira = _make_mock_jira()
+        mock_github = _make_mock_github()
+        mock_github.get_or_create_fork = AsyncMock(side_effect=Exception("GitHub API down"))
+        mock_git = _make_mock_git()
+
+        with (
+            patch("forge.workflow.nodes.task_takeover_pr.JiraClient", return_value=mock_jira),
+            patch("forge.workflow.nodes.task_takeover_pr.GitHubClient", return_value=mock_github),
+            patch("forge.workflow.nodes.task_takeover_pr.GitOperations", return_value=mock_git),
+        ):
+            result_state = await create_task_takeover_pr(state)
+
+        assert "GitHub API down" in result_state["last_error"]
+        assert result_state["current_node"] == "create_task_takeover_pr"
+        assert result_state["retry_count"] == 1
+        mock_cleanup.assert_not_called()
+        mock_teardown.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("asyncio.create_subprocess_exec")
+    async def test_cleanup_podman_containers(self, mock_create_proc) -> None:
+        """Test cleanup_podman_containers stops and removes matched containers."""
+        mock_ps_proc = AsyncMock()
+        mock_ps_proc.communicate = AsyncMock(return_value=(b"forge-TASK-123-abc\n", b""))
+
+        mock_stop_proc = AsyncMock()
+        mock_stop_proc.wait = AsyncMock()
+
+        mock_rm_proc = AsyncMock()
+        mock_rm_proc.wait = AsyncMock()
+
+        def side_effect(*args, **_kwargs):
+            if args[1] == "ps":
+                return mock_ps_proc
+            elif args[1] == "stop":
+                return mock_stop_proc
+            elif args[1] == "rm":
+                return mock_rm_proc
+            return AsyncMock()
+
+        mock_create_proc.side_effect = side_effect
+
+        await cleanup_podman_containers("TASK-123")
+
+        # Verify podman commands are executed
+        assert mock_create_proc.call_count >= 3
+
+        # Verify first call is to ps
+        first_call_args = mock_create_proc.call_args_list[0][0]
+        assert first_call_args[0] == "podman"
+        assert first_call_args[1] == "ps"
+        assert "name=forge-TASK-123-" in first_call_args
+
+        # Verify stop and rm are called
+        stop_called = False
+        rm_called = False
+        for call in mock_create_proc.call_args_list:
+            args = call[0]
+            if "stop" in args:
+                stop_called = True
+                assert "forge-TASK-123-abc" in args
+            if "rm" in args:
+                rm_called = True
+                assert "forge-TASK-123-abc" in args
+
+        assert stop_called is True
+        assert rm_called is True
