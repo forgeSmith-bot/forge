@@ -53,11 +53,10 @@ class TaskTakeoverWorkflow(BaseWorkflow):
         return any(label in labels for label in trigger_labels)
 
     def build_graph(self) -> StateGraph[Any]:
-        """Construct a placeholder LangGraph StateGraph."""
-        graph: StateGraph[Any] = StateGraph(self.state_schema)
-        graph.add_node("start", lambda s: s)
-        graph.set_entry_point("start")
-        return graph
+        """Construct the LangGraph StateGraph for Task Takeover."""
+        from forge.workflow.task_takeover.graph import build_task_takeover_graph
+
+        return build_task_takeover_graph()
 
     def create_initial_state(self, ticket_key: str, **kwargs: Any) -> dict[str, Any]:
         """Create initial state for a new Task Takeover workflow run."""
