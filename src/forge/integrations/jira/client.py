@@ -768,13 +768,15 @@ class JiraClient:
         # Get current labels
         current_labels = await self.get_labels(issue_key)
 
-        # Find forge: labels to remove (except the new one and forge:managed)
+        # Find forge: labels to remove (except the new one, forge:managed, and identity preservation labels)
         labels_to_remove = [
             label
             for label in current_labels
             if label.startswith(remove_prefix)
             and label != new_label.value
             and label != ForgeLabel.FORGE_MANAGED.value
+            and label != "forge:managed:task"
+            and label != "forge:managed:task-takeover"
         ]
 
         # Build update operations

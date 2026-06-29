@@ -61,6 +61,7 @@ _YOLO_GATES = {
     "prd_approval_gate",
     "spec_approval_gate",
     "plan_approval_gate",
+    "task_plan_approval_gate",
     "task_approval_gate",
     "rca_option_gate",
 }
@@ -580,6 +581,8 @@ class OrchestratorWorker:
                     approval_stage = "prd"
                 elif "spec-approved" in to_labels.lower():
                     approval_stage = "spec"
+                elif "task-plan-approved" in to_labels.lower():
+                    approval_stage = "task_plan"
                 elif "plan-approved" in to_labels.lower():
                     approval_stage = "plan"
                 elif "task-approved" in to_labels.lower():
@@ -597,6 +600,7 @@ class OrchestratorWorker:
                     "decompose_epics": "plan",
                     "regenerate_all_epics": "plan",
                     "update_single_epic": "plan",
+                    "task_plan_approval_gate": "task_plan",
                     "task_approval_gate": "task",
                     "generate_tasks": "task",
                 }
@@ -623,6 +627,7 @@ class OrchestratorWorker:
                 "prd_approval_gate": "forge:prd-approved",
                 "spec_approval_gate": "forge:spec-approved",
                 "plan_approval_gate": "forge:plan-approved",
+                "task_plan_approval_gate": "forge:task-plan-approved",
                 "task_approval_gate": "forge:task-approved",
             }
             expected_label = gate_to_approved_label.get(current_node)
@@ -1334,6 +1339,7 @@ class OrchestratorWorker:
             "update_single_epic": "the plan",
             "rca_option_gate": "the RCA",
             "plan_approval_gate_bug": "the plan",
+            "task_plan_approval_gate": "the task plan",
             "task_approval_gate": "the tasks",
             "generate_tasks": "the tasks",
             "regenerate_all_tasks": "the tasks",
