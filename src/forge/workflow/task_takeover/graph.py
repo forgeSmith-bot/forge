@@ -8,14 +8,18 @@ from typing import Any
 
 from langgraph.graph import END, StateGraph
 
+from forge.workflow.gates.task_plan_approval import (
+    route_task_plan_approval,
+    task_plan_approval_gate,
+)
 from forge.workflow.nodes import (
+    answer_question,
     escalate_to_blocked,
     generate_plan,
     route_triage_gate,
     triage_gate,
     triage_task,
 )
-from forge.workflow.nodes.task_takeover_planning import plan_approval_gate, route_plan_approval
 from forge.workflow.task_takeover.state import TaskTakeoverState
 from forge.workflow.utils import resolve_shared_resume_node
 
@@ -53,8 +57,8 @@ def route_entry(state: TaskTakeoverState) -> str:
             return "triage_gate"
         elif current_node == "generate_plan":
             return "generate_plan"
-        elif current_node == "plan_approval_gate":
-            return "plan_approval_gate"
+        elif current_node == "task_plan_approval_gate":
+            return "task_plan_approval_gate"
         elif current_node == "escalate_blocked":
             return "escalate_blocked"
         else:
@@ -74,6 +78,17 @@ def _route_after_triage_check(state: TaskTakeoverState) -> str:
     return "triage_gate"
 
 
+def _route_after_answer(state: TaskTakeoverState) -> str:
+    """Route back to the original gate after answering a question.
+
+    The answer_question node preserves current_node as the gate to return to.
+    """
+    current_node = state.get("current_node", "")
+    if current_node and "gate" in current_node:
+        return current_node
+    return "task_plan_approval_gate"
+
+
 def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     """Create the Task Takeover workflow graph.
 
@@ -89,8 +104,9 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     graph.add_node("triage_check", triage_task)
     graph.add_node("triage_gate", triage_gate)
     graph.add_node("generate_plan", generate_plan)
-    graph.add_node("plan_approval_gate", plan_approval_gate)
+    graph.add_node("task_plan_approval_gate", task_plan_approval_gate)
     graph.add_node("escalate_blocked", escalate_to_blocked)
+    graph.add_node("answer_question", answer_question)
 
     # Set entry point
     graph.set_entry_point("route_entry")
@@ -103,7 +119,7 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
             "triage_check": "triage_check",
             "triage_gate": "triage_gate",
             "generate_plan": "generate_plan",
-            "plan_approval_gate": "plan_approval_gate",
+            "task_plan_approval_gate": "task_plan_approval_gate",
             "escalate_blocked": "escalate_blocked",
             END: END,
         },
@@ -129,13 +145,24 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     )
 
     # Planning flow
-    graph.add_edge("generate_plan", "plan_approval_gate")
+    graph.add_edge("generate_plan", "task_plan_approval_gate")
     graph.add_conditional_edges(
-        "plan_approval_gate",
-        route_plan_approval,
+        "task_plan_approval_gate",
+        route_task_plan_approval,
         {
-            "generate_plan": "generate_plan",
+            "regenerate_plan": "generate_plan",
+            "answer_question": "answer_question",
+            "setup_workspace": END,  # Transitioning to isolated execution is terminal (END) for now in this subgraph
             END: END,
+        },
+    )
+
+    # Q&A routing
+    graph.add_conditional_edges(
+        "answer_question",
+        _route_after_answer,
+        {
+            "task_plan_approval_gate": "task_plan_approval_gate",
         },
     )
 

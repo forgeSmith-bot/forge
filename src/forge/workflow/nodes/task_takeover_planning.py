@@ -235,7 +235,7 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
                 {
                     **state,
                     "plan_content": new_plan,
-                    "current_node": "plan_approval_gate",
+                    "current_node": "task_plan_approval_gate",
                     "last_error": None,
                     "retry_count": 0,
                     "feedback_comment": None,

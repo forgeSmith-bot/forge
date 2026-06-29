@@ -96,7 +96,7 @@ class TestGeneratePlan:
             result = await generate_plan(base_task_state)
 
         assert result["plan_content"] == "## Plan\n\nTask Takeover Plan details."
-        assert result["current_node"] == "plan_approval_gate"
+        assert result["current_node"] == "task_plan_approval_gate"
         mock_jira.set_workflow_label.assert_called_once_with(
             "TASK-002", ForgeLabel.TASK_PLAN_PENDING
         )
@@ -180,7 +180,7 @@ class TestRegeneratePlanFlow:
         assert result["plan_content"] == "## Plan\n\nNew Plan content with logging."
         assert result["revision_requested"] is False
         assert result["feedback_comment"] is None
-        assert result["current_node"] == "plan_approval_gate"
+        assert result["current_node"] == "task_plan_approval_gate"
 
 
 class TestPlanApprovalGate:
