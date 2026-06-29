@@ -60,6 +60,7 @@ class TestPromptLoading:
             "task-takeover-triage",
             "task-takeover-planning",
             "task-takeover-qa",
+            "task-takeover-review",
         ]
 
         for expected in expected_prompts:
