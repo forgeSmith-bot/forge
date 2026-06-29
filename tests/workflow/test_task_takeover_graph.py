@@ -55,6 +55,10 @@ class TestTaskTakeoverGraphStructure:
             "task_plan_approval_gate",
             "escalate_blocked",
             "answer_question",
+            "setup_workspace",
+            "execute_task_changes",
+            "run_qualitative_review",
+            "create_task_takeover_pr",
         }
         for node in expected_nodes:
             assert node in compiled_graph.nodes
@@ -71,6 +75,10 @@ class TestPathTransitions:
             ("generate_plan", "generate_plan"),
             ("task_plan_approval_gate", "task_plan_approval_gate"),
             ("escalate_blocked", "escalate_blocked"),
+            ("setup_workspace", "setup_workspace"),
+            ("execute_task_changes", "execute_task_changes"),
+            ("qualitative_review", "run_qualitative_review"),
+            ("create_task_takeover_pr", "create_task_takeover_pr"),
             ("complete", END),
             ("", "triage_check"),
             ("unknown_node", "triage_check"),
@@ -107,6 +115,42 @@ class TestPathTransitions:
         """Verify route_after_answer returns back to the original gate."""
         state = make_task_state(current_node=current_node)
         assert _route_after_answer(state) == expected_next
+
+
+class TestQualitativeReviewRouting:
+    """Test routing after run_qualitative_review."""
+
+    def test_route_after_qualitative_review_adequate(self) -> None:
+        """If review is adequate, proceed to PR creation."""
+        from forge.workflow.task_takeover.graph import _route_after_qualitative_review
+
+        state = make_task_state(
+            review_verdict="adequate",
+            qualitative_review_retry_count=0,
+        )
+        assert _route_after_qualitative_review(state) == "create_task_takeover_pr"
+
+    def test_route_after_qualitative_review_failed_under_limit(self) -> None:
+        """If review is failed or incomplete and under the limit, route back to execute_task_changes."""
+        from forge.workflow.task_takeover.graph import _route_after_qualitative_review
+
+        state = make_task_state(
+            review_verdict="tests_incomplete",
+            qualitative_review_retry_count=1,
+        )
+        # Assuming standard review_max_attempts limit is 2, retry_count of 1 is under the limit
+        assert _route_after_qualitative_review(state) == "execute_task_changes"
+
+    def test_route_after_qualitative_review_failed_at_or_above_limit(self) -> None:
+        """If review is failed or incomplete and at/above the limit, transition to escalate_blocked."""
+        from forge.workflow.task_takeover.graph import _route_after_qualitative_review
+
+        state = make_task_state(
+            review_verdict="tests_incomplete",
+            qualitative_review_retry_count=2,
+        )
+        # retry_count of 2 is at/above the limit of 2, so transition to escalate_blocked
+        assert _route_after_qualitative_review(state) == "escalate_blocked"
 
 
 class TestInteractiveGateBehavior:

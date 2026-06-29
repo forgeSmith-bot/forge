@@ -101,6 +101,43 @@ def _route_after_answer(state: TaskTakeoverState) -> str:
     return "task_plan_approval_gate"
 
 
+def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
+    """Route after run_qualitative_review considering qualitative verdict and retry count.
+
+    If the review is adequate (success), proceed to create_task_takeover_pr.
+    If the review is failed or incomplete:
+      - Check if we've reached the configured retry limit.
+      - If limit reached: transition to escalate_blocked.
+      - Otherwise: transition back to execute_task_changes.
+    """
+    verdict = state.get("review_verdict")
+    retry_count = state.get("qualitative_review_retry_count", 0)
+
+    if verdict == "adequate":
+        return "create_task_takeover_pr"
+
+    # Fetch configured retry limit (review_max_attempts) from settings, default to 2
+    try:
+        from forge.config import get_settings
+
+        settings = get_settings()
+        limit = settings.task_takeover.review_max_attempts
+    except Exception:
+        limit = 2
+
+    if retry_count >= limit:
+        logger.warning(
+            f"Qualitative review cap ({limit}) reached on task takeover workflow, transitioning to escalate_blocked"
+        )
+        return "escalate_blocked"
+
+    logger.info(
+        f"Qualitative review verdict is {verdict!r}, retry attempt {retry_count}/{limit}, "
+        "routing back to execute_task_changes"
+    )
+    return "execute_task_changes"
+
+
 def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     """Create the Task Takeover workflow graph.
 
@@ -180,7 +217,15 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     # Execution flow
     graph.add_edge("setup_workspace", "execute_task_changes")
     graph.add_edge("execute_task_changes", "run_qualitative_review")
-    graph.add_edge("run_qualitative_review", "create_task_takeover_pr")
+    graph.add_conditional_edges(
+        "run_qualitative_review",
+        _route_after_qualitative_review,
+        {
+            "execute_task_changes": "execute_task_changes",
+            "create_task_takeover_pr": "create_task_takeover_pr",
+            "escalate_blocked": "escalate_blocked",
+        },
+    )
     graph.add_edge("create_task_takeover_pr", END)
 
     # Q&A routing

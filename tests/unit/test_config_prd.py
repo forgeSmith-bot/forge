@@ -48,6 +48,7 @@ class TestTaskTakeoverConfig:
         assert settings.task_takeover.enabled is False
         assert settings.task_takeover.issue_types == []
         assert settings.task_takeover.require_tests is True
+        assert settings.task_takeover.review_max_attempts == 2
 
         # Verify default labels
         labels = settings.task_takeover.labels
@@ -71,11 +72,13 @@ class TestTaskTakeoverConfig:
                     "approved": "custom-approved",
                 },
                 "require_tests": False,
+                "review_max_attempts": 3,
             },
         )
         assert settings.task_takeover.enabled is True
         assert settings.task_takeover.issue_types == ["Bug", "Feature"]
         assert settings.task_takeover.require_tests is False
+        assert settings.task_takeover.review_max_attempts == 3
 
         labels = settings.task_takeover.labels
         assert labels.trigger == "custom-trigger"

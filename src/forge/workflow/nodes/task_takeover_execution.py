@@ -63,8 +63,14 @@ async def execute_task_changes(state: TaskTakeoverState) -> TaskTakeoverState:
         )
 
         # Build task description with requirements injected
+        review_feedback = state.get("review_feedback")
+        feedback_section = ""
+        if review_feedback:
+            feedback_section = f"## Previous Qualitative Review Feedback\nPlease address the following feedback from the qualitative review:\n{review_feedback}\n\n"
+
         task_prompt = (
             f"You are implementing changes for task takeover [{current_task}].\n\n"
+            f"{feedback_section}"
             f"## Approved Implementation Plan\n{plan_content}\n\n"
             f"## Task Description\n{task_description}\n\n"
             f"## Critical Instructions\n"
