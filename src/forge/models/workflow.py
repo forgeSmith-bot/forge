@@ -124,6 +124,12 @@ class ForgeLabel(StrEnum):
     RCA_APPROVED = "forge:rca-approved"
     TRIAGE_PENDING = "forge:triage-pending"
 
+    # Task Takeover workflow
+    TASK_TAKEOVER = "forge:task-takeover"
+    TASK_TRIAGE_PENDING = "forge:task-triage-pending"
+    TASK_PLAN_PENDING = "forge:task-plan-pending"
+    TASK_PLAN_APPROVED = "forge:task-plan-approved"
+
     # General
     FORGE_MANAGED = "forge:managed"
     BLOCKED = "forge:blocked"
