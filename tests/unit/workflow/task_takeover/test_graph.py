@@ -66,7 +66,7 @@ class TestRouteEntry:
             ("triage_check", "triage_check"),
             ("triage_gate", "triage_gate"),
             ("generate_plan", "generate_plan"),
-            ("plan_approval_gate", "plan_approval_gate"),
+            ("task_plan_approval_gate", "task_plan_approval_gate"),
             ("escalate_blocked", "escalate_blocked"),
             ("complete", END),
         ],
