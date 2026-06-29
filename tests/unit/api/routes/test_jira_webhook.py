@@ -8,14 +8,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pydantic import SecretStr
+
+from forge.main import app
 from tests.fixtures.jira_payloads import (
     WEBHOOK_ISSUE_CREATED,
     WEBHOOK_ISSUE_UPDATED_COMMENT_ADDED,
     WEBHOOK_ISSUE_UPDATED_LABEL_ADDED,
     make_jira_webhook,
 )
-
-from forge.main import app
 
 
 def compute_signature(payload: bytes, secret: str) -> str:
@@ -44,20 +44,21 @@ class TestJiraWebhookRoute:
         mock_producer = MagicMock()
         mock_producer.publish = AsyncMock()
 
-        with patch("forge.api.routes.jira.get_settings", return_value=mock_settings):
-            with patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer):
-                async with AsyncClient(
-                    transport=ASGITransport(app=app),
-                    base_url="http://test"
-                ) as client:
-                    response = await client.post(
-                        "/api/v1/webhooks/jira",
-                        content=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "X-Hub-Signature-256": signature,
-                        },
-                    )
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
 
         assert response.status_code == 202
 
@@ -71,8 +72,7 @@ class TestJiraWebhookRoute:
 
         with patch("forge.api.routes.jira.get_settings", return_value=mock_settings):
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
                 response = await client.post(
                     "/api/v1/webhooks/jira",
@@ -95,8 +95,7 @@ class TestJiraWebhookRoute:
 
         with patch("forge.api.routes.jira.get_settings", return_value=mock_settings):
             async with AsyncClient(
-                transport=ASGITransport(app=app),
-                base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
                 response = await client.post(
                     "/api/v1/webhooks/jira",
@@ -120,20 +119,21 @@ class TestJiraWebhookRoute:
         mock_producer = MagicMock()
         mock_producer.publish = AsyncMock()
 
-        with patch("forge.api.routes.jira.get_settings", return_value=mock_settings):
-            with patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer):
-                async with AsyncClient(
-                    transport=ASGITransport(app=app),
-                    base_url="http://test"
-                ) as client:
-                    response = await client.post(
-                        "/api/v1/webhooks/jira",
-                        content=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "X-Hub-Signature-256": signature,
-                        },
-                    )
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
 
         assert response.status_code == 202
         data = response.json()
@@ -160,23 +160,237 @@ class TestJiraWebhookRoute:
         mock_producer = MagicMock()
         mock_producer.publish = AsyncMock()
 
-        with patch("forge.api.routes.jira.get_settings", return_value=mock_settings):
-            with patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer):
-                async with AsyncClient(
-                    transport=ASGITransport(app=app),
-                    base_url="http://test"
-                ) as client:
-                    response = await client.post(
-                        "/api/v1/webhooks/jira",
-                        content=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "X-Hub-Signature-256": signature,
-                        },
-                    )
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
 
         assert response.status_code == 202
         mock_producer.publish.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_standard_task_without_parent_skipped(self) -> None:
+        """Standard Task issues without forge:parent label or takeover triggers are skipped."""
+        webhook = make_jira_webhook(issue_type="Task", labels=["forge:managed"])
+        payload = json.dumps(webhook).encode()
+        secret = "test-webhook-secret"
+        signature = compute_signature(payload, secret)
+
+        mock_settings = MagicMock()
+        mock_settings.jira_webhook_secret = SecretStr(secret)
+        mock_settings.task_takeover = MagicMock()
+        mock_settings.task_takeover.labels = MagicMock()
+        mock_settings.task_takeover.labels.trigger = "forge:task-takeover"
+
+        mock_producer = MagicMock()
+        mock_producer.publish = AsyncMock()
+
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
+
+        assert response.status_code == 202
+        data = response.json()
+        assert data["status"] == "skipped"
+        assert "must have forge:parent label" in data["reason"]
+        mock_producer.publish.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_standard_task_with_parent_routed_to_parent(self) -> None:
+        """Standard Task issues with forge:parent label are routed to the parent ticket key."""
+        webhook = make_jira_webhook(
+            issue_type="Task", labels=["forge:managed", "forge:parent:PARENT-123"]
+        )
+        payload = json.dumps(webhook).encode()
+        secret = "test-webhook-secret"
+        signature = compute_signature(payload, secret)
+
+        mock_settings = MagicMock()
+        mock_settings.jira_webhook_secret = SecretStr(secret)
+        mock_settings.task_takeover = MagicMock()
+        mock_settings.task_takeover.labels = MagicMock()
+        mock_settings.task_takeover.labels.trigger = "forge:task-takeover"
+
+        mock_producer = MagicMock()
+        mock_producer.publish = AsyncMock()
+
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
+
+        assert response.status_code == 202
+        data = response.json()
+        assert data["status"] == "accepted"
+        mock_producer.publish.assert_called_once()
+        called_kwargs = mock_producer.publish.call_args.kwargs
+        assert called_kwargs["ticket_key"] == "PARENT-123"
+        assert called_kwargs["payload"]["source_ticket_key"] == "TEST-123"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "trigger_label",
+        ["forge:task-takeover", "forge:managed:task", "forge:managed:task-takeover"],
+    )
+    async def test_task_with_takeover_trigger_bypasses_parent_check(self, trigger_label: str) -> None:
+        """Task issue with a task-takeover trigger label bypasses parent check and is queued under its own key."""
+        webhook = make_jira_webhook(issue_type="Task", labels=[trigger_label])
+        payload = json.dumps(webhook).encode()
+        secret = "test-webhook-secret"
+        signature = compute_signature(payload, secret)
+
+        mock_settings = MagicMock()
+        mock_settings.jira_webhook_secret = SecretStr(secret)
+        mock_settings.task_takeover = MagicMock()
+        mock_settings.task_takeover.labels = MagicMock()
+        mock_settings.task_takeover.labels.trigger = "forge:task-takeover"
+
+        mock_producer = MagicMock()
+        mock_producer.publish = AsyncMock()
+
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
+
+        assert response.status_code == 202
+        data = response.json()
+        assert data["status"] == "accepted"
+        mock_producer.publish.assert_called_once()
+        called_kwargs = mock_producer.publish.call_args.kwargs
+        assert called_kwargs["ticket_key"] == "TEST-123"
+        assert "source_ticket_key" not in called_kwargs["payload"]
+
+    @pytest.mark.asyncio
+    async def test_task_with_takeover_trigger_in_changelog_bypasses_parent_check(self) -> None:
+        """Task issue with task-takeover trigger added in changelog bypasses parent check and is queued under its own key."""
+        webhook = make_jira_webhook(
+            issue_type="Task",
+            labels=[],
+            changelog_field="labels",
+            changelog_from="some-other-label",
+            changelog_to="forge:managed:task-takeover",
+        )
+        payload = json.dumps(webhook).encode()
+        secret = "test-webhook-secret"
+        signature = compute_signature(payload, secret)
+
+        mock_settings = MagicMock()
+        mock_settings.jira_webhook_secret = SecretStr(secret)
+        mock_settings.task_takeover = MagicMock()
+        mock_settings.task_takeover.labels = MagicMock()
+        mock_settings.task_takeover.labels.trigger = "forge:task-takeover"
+
+        mock_producer = MagicMock()
+        mock_producer.publish = AsyncMock()
+
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
+
+        assert response.status_code == 202
+        data = response.json()
+        assert data["status"] == "accepted"
+        mock_producer.publish.assert_called_once()
+        called_kwargs = mock_producer.publish.call_args.kwargs
+        assert called_kwargs["ticket_key"] == "TEST-123"
+
+    @pytest.mark.asyncio
+    async def test_task_with_custom_takeover_trigger_bypasses_parent_check(self) -> None:
+        """Task issue with a custom configured trigger label bypasses parent check and is queued under its own key."""
+        webhook = make_jira_webhook(issue_type="Task", labels=["custom-trigger-label"])
+        payload = json.dumps(webhook).encode()
+        secret = "test-webhook-secret"
+        signature = compute_signature(payload, secret)
+
+        mock_settings = MagicMock()
+        mock_settings.jira_webhook_secret = SecretStr(secret)
+        mock_settings.task_takeover = MagicMock()
+        mock_settings.task_takeover.labels = MagicMock()
+        mock_settings.task_takeover.labels.trigger = "custom-trigger-label"
+
+        mock_producer = MagicMock()
+        mock_producer.publish = AsyncMock()
+
+        with (
+            patch("forge.api.routes.jira.get_settings", return_value=mock_settings),
+            patch("forge.api.routes.jira.QueueProducer", return_value=mock_producer),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/webhooks/jira",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Hub-Signature-256": signature,
+                    },
+                )
+
+        assert response.status_code == 202
+        data = response.json()
+        assert data["status"] == "accepted"
+        mock_producer.publish.assert_called_once()
+        called_kwargs = mock_producer.publish.call_args.kwargs
+        assert called_kwargs["ticket_key"] == "TEST-123"
 
 
 class TestJiraWebhookParsing:
