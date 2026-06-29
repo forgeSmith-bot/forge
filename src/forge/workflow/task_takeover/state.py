@@ -19,6 +19,8 @@ class TaskTakeoverState(
 
     ticket_type: TicketType
     plan_content: str | None
+    triage_passed: bool
+    triage_missing_fields: list[str]
 
 
 def create_initial_task_takeover_state(ticket_key: str, **kwargs: Any) -> TaskTakeoverState:
@@ -49,6 +51,9 @@ def create_initial_task_takeover_state(ticket_key: str, **kwargs: Any) -> TaskTa
         "repos_completed": [],
         "implemented_tasks": [],
         "current_task_key": None,
+        "triage_passed": False,
+        "triage_missing_fields": [],
+        "plan_content": None,
     }
     defaults.update(kwargs)
     return cast(TaskTakeoverState, defaults)
