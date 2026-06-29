@@ -11,8 +11,8 @@ from langgraph.graph import END, StateGraph
 from forge.workflow.nodes import (
     escalate_to_blocked,
     route_triage_gate,
-    triage_check,
     triage_gate,
+    triage_task,
 )
 from forge.workflow.task_takeover.state import TaskTakeoverState
 from forge.workflow.utils import resolve_shared_resume_node, set_paused
@@ -65,7 +65,7 @@ def route_entry(state: TaskTakeoverState) -> str:
 def _route_after_triage_check(state: TaskTakeoverState) -> str:
     """Route after triage_check based on what triage_check set as current_node."""
     node = state.get("current_node", "triage_gate")
-    if node == "analyze_bug":
+    if node in ("analyze_bug", "generate_plan"):
         return "generate_plan"
     if node in ("triage_gate", "escalate_blocked"):
         return node
@@ -112,7 +112,7 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     graph.add_node("route_entry", lambda state: state)
 
     # Nodes
-    graph.add_node("triage_check", triage_check)
+    graph.add_node("triage_check", triage_task)
     graph.add_node("triage_gate", triage_gate)
     graph.add_node("generate_plan", generate_plan)
     graph.add_node("plan_approval_gate", plan_approval_gate)
