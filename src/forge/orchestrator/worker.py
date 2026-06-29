@@ -605,6 +605,13 @@ class OrchestratorWorker:
                     "generate_tasks": "task",
                 }
                 expected_stage = node_to_stage.get(current_node)
+                if current_node == "plan_approval_gate" and current_state.get("ticket_type") in (
+                    "Task",
+                    "Epic",
+                    TicketType.TASK,
+                    TicketType.EPIC,
+                ):
+                    expected_stage = "task_plan"
 
                 if approval_stage and expected_stage and approval_stage == expected_stage:
                     is_approved = True
@@ -626,7 +633,10 @@ class OrchestratorWorker:
             gate_to_approved_label = {
                 "prd_approval_gate": "forge:prd-approved",
                 "spec_approval_gate": "forge:spec-approved",
-                "plan_approval_gate": "forge:plan-approved",
+                "plan_approval_gate": "forge:task-plan-approved"
+                if current_state.get("ticket_type")
+                in ("Task", "Epic", TicketType.TASK, TicketType.EPIC)
+                else "forge:plan-approved",
                 "task_plan_approval_gate": "forge:task-plan-approved",
                 "task_approval_gate": "forge:task-approved",
             }
