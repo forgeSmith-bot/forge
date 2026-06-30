@@ -1,5 +1,8 @@
 """Tests for WorkflowRouter."""
 
+from unittest.mock import patch
+
+import pytest
 from langgraph.graph import StateGraph
 
 from forge.models.workflow import TicketType
@@ -48,6 +51,17 @@ class MockBugWorkflow(BaseWorkflow):
 
 class TestWorkflowRouter:
     """Tests for WorkflowRouter."""
+
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        """Mock settings to enable task takeover."""
+        from forge.config import Settings, TaskTakeoverSettings
+
+        mock_s = Settings()
+        mock_s.task_takeover = TaskTakeoverSettings(enabled=True)
+
+        with patch("forge.config.get_settings", return_value=mock_s):
+            yield
 
     def test_register_workflow(self):
         """Can register a workflow class."""

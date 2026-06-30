@@ -1,10 +1,25 @@
 """Tests for workflow registry."""
 
+from unittest.mock import patch
+
+import pytest
+
 from forge.models.workflow import TicketType
 
 
 class TestDefaultRouter:
     """Tests for create_default_router."""
+
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        """Mock settings to enable task takeover."""
+        from forge.config import Settings, TaskTakeoverSettings
+
+        mock_s = Settings()
+        mock_s.task_takeover = TaskTakeoverSettings(enabled=True)
+
+        with patch("forge.config.get_settings", return_value=mock_s):
+            yield
 
     def test_creates_router_with_workflows(self):
         """create_default_router returns router with workflows."""
