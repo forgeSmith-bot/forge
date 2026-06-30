@@ -123,26 +123,24 @@ async def receive_jira_webhook(
                     break
 
         # Detect task-takeover trigger labels
-        takeover_triggers = {
-            "forge:task-takeover",
-            "forge:managed:task",
-            "forge:managed:task-takeover",
-        }
-        if (
-            settings.task_takeover
-            and settings.task_takeover.labels
-            and settings.task_takeover.labels.trigger
-        ):
-            takeover_triggers.add(settings.task_takeover.labels.trigger)
+        has_takeover_trigger = False
+        if settings.task_takeover and settings.task_takeover.enabled:
+            takeover_triggers = {
+                "forge:task-takeover",
+                "forge:managed:task",
+                "forge:managed:task-takeover",
+            }
+            if settings.task_takeover.labels and settings.task_takeover.labels.trigger:
+                takeover_triggers.add(settings.task_takeover.labels.trigger)
 
-        has_takeover_trigger = any(label in issue_labels for label in takeover_triggers)
-        for item in changelog_items:
-            if item.get("field") == "labels":
-                to_labels = item.get("toString", "") or ""
-                updated_labels = to_labels.split()
-                if any(label in updated_labels for label in takeover_triggers):
-                    has_takeover_trigger = True
-                    break
+            has_takeover_trigger = any(label in issue_labels for label in takeover_triggers)
+            for item in changelog_items:
+                if item.get("field") == "labels":
+                    to_labels = item.get("toString", "") or ""
+                    updated_labels = to_labels.split()
+                    if any(label in updated_labels for label in takeover_triggers):
+                        has_takeover_trigger = True
+                        break
 
         if not (has_forge_managed or has_takeover_trigger):
             span.set_attribute("forge.skipped", True)

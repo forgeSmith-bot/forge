@@ -259,9 +259,10 @@ class OrchestratorWorker:
                 )
             else:
                 # Use router to resolve which workflow to use
+                labels = message.payload.get("issue", {}).get("fields", {}).get("labels", []) or []
                 workflow_instance = self.router.resolve(
                     ticket_type=ticket_type,
-                    labels=[],  # TODO: Extract labels from message payload
+                    labels=labels,
                     event=message.payload,
                 )
 
@@ -1137,6 +1138,7 @@ class OrchestratorWorker:
                 "plan_approval_gate",
                 "task_approval_gate",
                 "plan_approval_gate_bug",
+                "task_plan_approval_gate",
             }
             prev_error = current_state.get("last_error")
             is_paused_at_gate = current_state.get("is_paused") and current_node in approval_gates
@@ -1571,8 +1573,23 @@ class OrchestratorWorker:
             # by the Jira webhook handler. The payload still carries the child's
             # issue type, which won't match any workflow. Fall through to UNKNOWN
             # so _find_workflow_by_state resolves it from checkpoint.
+            # stand-alone task takeover events (which have trigger labels) bypass child checks.
+            labels = fields.get("labels", []) or []
+            takeover_triggers = {
+                "forge:task-takeover",
+                "forge:managed:task",
+                "forge:managed:task-takeover",
+            }
+            if (
+                self.settings.task_takeover
+                and self.settings.task_takeover.labels
+                and self.settings.task_takeover.labels.trigger
+            ):
+                takeover_triggers.add(self.settings.task_takeover.labels.trigger)
+            is_takeover = any(label in labels for label in takeover_triggers)
+
             child_types = {"Epic", "Task", "Sub-task"}
-            if ticket_type_str in child_types:
+            if ticket_type_str in child_types and not is_takeover:
                 return TicketType.UNKNOWN
 
             # Map string to TicketType enum

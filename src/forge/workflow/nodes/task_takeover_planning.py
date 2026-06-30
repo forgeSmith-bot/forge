@@ -259,6 +259,13 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
             ),
         )
     finally:
+        if (
+            "workspace" in locals()
+            and workspace
+            and "workspace_manager" in locals()
+            and workspace_manager
+        ):
+            workspace_manager.destroy_workspace(workspace)
         await jira.close()
 
 

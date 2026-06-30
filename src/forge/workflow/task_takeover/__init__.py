@@ -23,9 +23,14 @@ class TaskTakeoverWorkflow(BaseWorkflow):
         return TaskTakeoverState
 
     def matches(self, _ticket_type: TicketType, labels: list[str], _event: dict[str, Any]) -> bool:
-        """Return True only if forge:managed is in labels and any exact task-takeover trigger is present."""
-        # Ensure 'forge:managed' is present exactly (no prefix matching like checking if a label startswith 'forge:managed')
-        if "forge:managed" not in labels:
+        """Return True only if task_takeover is enabled and any exact task-takeover trigger is present."""
+        try:
+            from forge.config import get_settings
+
+            settings = get_settings()
+            if not settings.task_takeover or not settings.task_takeover.enabled:
+                return False
+        except Exception:
             return False
 
         # Define the exact trigger labels
@@ -36,18 +41,12 @@ class TaskTakeoverWorkflow(BaseWorkflow):
         }
 
         # Include custom trigger from settings if available
-        try:
-            from forge.config import get_settings
-
-            settings = get_settings()
-            if (
-                settings.task_takeover
-                and settings.task_takeover.labels
-                and settings.task_takeover.labels.trigger
-            ):
-                trigger_labels.add(settings.task_takeover.labels.trigger)
-        except Exception:
-            pass
+        if (
+            settings.task_takeover
+            and settings.task_takeover.labels
+            and settings.task_takeover.labels.trigger
+        ):
+            trigger_labels.add(settings.task_takeover.labels.trigger)
 
         # Check if any exact trigger label is present in the labels list
         return any(label in labels for label in trigger_labels)
