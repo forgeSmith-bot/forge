@@ -1,5 +1,8 @@
 """Tests for TaskTakeoverWorkflow."""
 
+from unittest.mock import patch
+
+import pytest
 from langgraph.graph import StateGraph
 
 from forge.models.workflow import TicketType
@@ -9,6 +12,17 @@ from forge.workflow.task_takeover.state import TaskTakeoverState
 
 class TestTaskTakeoverWorkflow:
     """Tests for TaskTakeoverWorkflow class."""
+
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        """Mock settings to enable task takeover."""
+        from forge.config import Settings, TaskTakeoverSettings
+
+        mock_s = Settings()
+        mock_s.task_takeover = TaskTakeoverSettings(enabled=True)
+
+        with patch("forge.config.get_settings", return_value=mock_s):
+            yield
 
     def test_workflow_has_name(self):
         """TaskTakeoverWorkflow has name attribute."""
@@ -68,24 +82,15 @@ class TestTaskTakeoverWorkflow:
             workflow.matches(TicketType.TASK, ["forge:managed", "forge:prd-drafting"], {}) is False
         )
 
-    def test_matches_returns_false_when_only_trigger_present_without_managed(self):
-        """matches returns False when trigger label is present but forge:managed is missing."""
+    def test_matches_returns_true_when_only_trigger_present_without_managed(self):
+        """matches returns True when trigger label is present even if forge:managed is missing."""
         workflow = TaskTakeoverWorkflow()
-        assert workflow.matches(TicketType.TASK, ["forge:task-takeover"], {}) is False
-        assert workflow.matches(TicketType.TASK, ["forge:managed:task"], {}) is False
-        assert workflow.matches(TicketType.TASK, ["forge:managed:task-takeover"], {}) is False
+        assert workflow.matches(TicketType.TASK, ["forge:task-takeover"], {}) is True
+        assert workflow.matches(TicketType.TASK, ["forge:managed:task"], {}) is True
+        assert workflow.matches(TicketType.TASK, ["forge:managed:task-takeover"], {}) is True
 
-    def test_matches_returns_false_with_prefix_managed_label(self):
-        """matches returns False if forge:managed is only prefix-matched (not exactly present)."""
+    def test_matches_returns_false_with_non_trigger_labels(self):
+        """matches returns False if no exact trigger label is present."""
         workflow = TaskTakeoverWorkflow()
-        # "forge:managed:task" has "forge:managed" as prefix but is not exactly "forge:managed"
-        assert (
-            workflow.matches(TicketType.TASK, ["forge:managed:task", "forge:task-takeover"], {})
-            is False
-        )
-        assert (
-            workflow.matches(
-                TicketType.TASK, ["forge:managed-something", "forge:task-takeover"], {}
-            )
-            is False
-        )
+        assert workflow.matches(TicketType.TASK, ["forge:managed-something"], {}) is False
+        assert workflow.matches(TicketType.TASK, ["other-label"], {}) is False

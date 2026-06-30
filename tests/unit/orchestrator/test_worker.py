@@ -1011,3 +1011,47 @@ class TestTaskPlanApprovalAndLabelPreservation:
         # Verify that "forge:task-plan-approved" is added
         add_ops = [op for op in update_ops if "add" in op]
         assert any(op["add"] == ForgeLabel.TASK_PLAN_APPROVED.value for op in add_ops)
+
+
+class TestWorkerRouting:
+    """Tests for message routing and label extraction in the worker."""
+
+    @pytest.mark.asyncio
+    async def test_process_workflow_extracts_labels_and_calls_resolve(self):
+        """Worker extracts labels from the payload and passes them to the router."""
+        from forge.models.workflow import TicketType
+
+        worker = OrchestratorWorker(consumer_name="test-worker")
+
+        message = QueueMessage(
+            message_id="1234567890-0",
+            event_id="test-event-001",
+            source=EventSource.JIRA,
+            event_type="jira:issue_updated",
+            ticket_key="TEST-123",
+            payload={
+                "issue": {
+                    "key": "TEST-123",
+                    "fields": {
+                        "issuetype": {"name": "Task"},
+                        "labels": ["forge:task-takeover"],
+                    },
+                },
+            },
+        )
+
+        mock_router = MagicMock()
+        mock_router.resolve = MagicMock(return_value=None)
+        worker.router = mock_router
+
+        with (
+            patch("forge.orchestrator.worker.ensure_skills", AsyncMock()),
+            patch("forge.orchestrator.worker.JiraClient"),
+        ):
+            await worker._process_workflow(message)
+
+        mock_router.resolve.assert_called_once_with(
+            ticket_type=TicketType.TASK,
+            labels=["forge:task-takeover"],
+            event=message.payload,
+        )
