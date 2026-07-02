@@ -39,7 +39,9 @@ async def prepare_pull_request_target(
 ) -> PullRequestTarget:
     """Prepare a fork remote for opening a pull request from the current workspace."""
     if not current_repo or "/" not in current_repo:
-        raise ValueError(f"Invalid repository format '{current_repo}': must be in owner/repo format")
+        raise ValueError(
+            f"Invalid repository format '{current_repo}': must be in owner/repo format"
+        )
 
     owner, repo = current_repo.split("/", 1)
 
