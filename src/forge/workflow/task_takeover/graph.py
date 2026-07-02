@@ -14,18 +14,26 @@ from forge.workflow.gates.task_plan_approval import (
 )
 from forge.workflow.nodes import (
     answer_question,
+    attempt_ci_fix,
     create_task_takeover_pr,
     escalate_to_blocked,
+    evaluate_ci_status,
     execute_task_changes,
     generate_plan,
+    human_review_gate,
+    implement_review,
+    review_response_gate,
+    route_human_review,
+    route_review_response,
     route_triage_gate,
     run_qualitative_review,
     setup_workspace,
     triage_gate,
     triage_task,
+    wait_for_ci_gate,
 )
 from forge.workflow.task_takeover.state import TaskTakeoverState
-from forge.workflow.utils import resolve_shared_resume_node
+from forge.workflow.utils import resolve_shared_resume_node, update_state_timestamp
 
 logger = logging.getLogger(__name__)
 QUALITATIVE_REVIEW_MAX_ATTEMPTS = 2
@@ -146,6 +154,39 @@ def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
     return "execute_task_changes"
 
 
+def _route_ci_evaluation(state: TaskTakeoverState) -> str:
+    """Route based on CI evaluation results."""
+    ci_status = state.get("ci_status", "")
+    routes = {
+        "passed": "human_review_gate",
+        "fixing": "attempt_ci_fix",
+        "pending": END,
+    }
+    return routes.get(ci_status, "escalate_blocked")
+
+
+def _route_human_review_task_takeover(state: TaskTakeoverState) -> str:
+    """Route after human_review_gate for a standalone Task/Epic PR."""
+    if state.get("pr_merged"):
+        return "complete_task_takeover"
+    next_node = route_human_review(state)
+    if next_node == "complete_tasks":
+        return "complete_task_takeover"
+    return next_node
+
+
+async def complete_task_takeover(state: TaskTakeoverState) -> TaskTakeoverState:
+    """Mark Task Takeover workflow complete after PR merge."""
+    return update_state_timestamp(
+        {
+            **state,
+            "current_node": "complete",
+            "is_paused": False,
+            "ci_fix_attempt": 0,
+        }
+    )
+
+
 def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     """Create the Task Takeover workflow graph.
 
@@ -168,6 +209,13 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     graph.add_node("execute_task_changes", execute_task_changes)
     graph.add_node("run_qualitative_review", run_qualitative_review)
     graph.add_node("create_task_takeover_pr", create_task_takeover_pr)
+    graph.add_node("wait_for_ci_gate", wait_for_ci_gate)
+    graph.add_node("ci_evaluator", evaluate_ci_status)
+    graph.add_node("attempt_ci_fix", attempt_ci_fix)
+    graph.add_node("human_review_gate", human_review_gate)
+    graph.add_node("implement_review", implement_review)
+    graph.add_node("review_response_gate", review_response_gate)
+    graph.add_node("complete_task_takeover", complete_task_takeover)
 
     # Set entry point
     graph.set_entry_point("route_entry")
@@ -185,6 +233,12 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
             "execute_task_changes": "execute_task_changes",
             "run_qualitative_review": "run_qualitative_review",
             "create_task_takeover_pr": "create_task_takeover_pr",
+            "wait_for_ci_gate": "wait_for_ci_gate",
+            "ci_evaluator": "ci_evaluator",
+            "attempt_ci_fix": "ci_evaluator",
+            "human_review_gate": "human_review_gate",
+            "implement_review": "implement_review",
+            "review_response_gate": "review_response_gate",
             "escalate_blocked": "escalate_blocked",
             END: END,
         },
@@ -242,7 +296,62 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
             "escalate_blocked": "escalate_blocked",
         },
     )
-    graph.add_edge("create_task_takeover_pr", END)
+    graph.add_edge("create_task_takeover_pr", "wait_for_ci_gate")
+    graph.add_conditional_edges(
+        "wait_for_ci_gate",
+        lambda s: END if s.get("is_paused") else "ci_evaluator",
+        {END: END, "ci_evaluator": "ci_evaluator"},
+    )
+    graph.add_conditional_edges(
+        "ci_evaluator",
+        _route_ci_evaluation,
+        {
+            "human_review_gate": "human_review_gate",
+            "attempt_ci_fix": "attempt_ci_fix",
+            "escalate_blocked": "escalate_blocked",
+            END: END,
+        },
+    )
+    graph.add_conditional_edges(
+        "attempt_ci_fix",
+        lambda s: s.get("current_node", "wait_for_ci_gate"),
+        {
+            "wait_for_ci_gate": "wait_for_ci_gate",
+            "escalate_blocked": "escalate_blocked",
+            "ci_evaluator": "ci_evaluator",
+            "attempt_ci_fix": "escalate_blocked",
+        },
+    )
+    graph.add_conditional_edges(
+        "human_review_gate",
+        _route_human_review_task_takeover,
+        {
+            "implement_review": "implement_review",
+            "complete_task_takeover": "complete_task_takeover",
+            END: END,
+        },
+    )
+    graph.add_conditional_edges(
+        "implement_review",
+        lambda s: s.get("current_node", "wait_for_ci_gate"),
+        {
+            "wait_for_ci_gate": "wait_for_ci_gate",
+            "review_response_gate": "review_response_gate",
+            "implement_review": "implement_review",
+            "human_review_gate": "human_review_gate",
+            "escalate_blocked": "escalate_blocked",
+        },
+    )
+    graph.add_conditional_edges(
+        "review_response_gate",
+        route_review_response,
+        {
+            "implement_review": "implement_review",
+            "human_review_gate": "human_review_gate",
+            END: END,
+        },
+    )
+    graph.add_edge("complete_task_takeover", END)
 
     # Q&A routing
     graph.add_conditional_edges(

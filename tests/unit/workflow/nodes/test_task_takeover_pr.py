@@ -129,6 +129,8 @@ class TestTaskTakeoverPRNode:
 
         # Assert resulting state
         assert result_state["workspace_path"] is None
+        assert result_state["current_node"] == "wait_for_ci_gate"
+        assert result_state["is_paused"] is False
         assert result_state["current_pr_url"] == "https://github.com/acme/backend/pull/42"
         assert result_state["current_pr_number"] == 42
         assert result_state["fork_owner"] == "fork-owner"

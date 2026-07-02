@@ -21,6 +21,11 @@ from forge.workflow.nodes.human_review import (
     human_review_gate,
     route_human_review,
 )
+from forge.workflow.nodes.implement_review import (
+    implement_review,
+    review_response_gate,
+    route_review_response,
+)
 from forge.workflow.nodes.implementation import implement_task
 from forge.workflow.nodes.local_reviewer import local_review_changes
 from forge.workflow.nodes.plan_bug_fix import (
@@ -120,7 +125,10 @@ __all__ = [
     "aggregate_feature_status",
     "complete_tasks",
     "human_review_gate",
+    "implement_review",
+    "review_response_gate",
     "route_human_review",
+    "route_review_response",
     # Bug workflow — triage
     "triage_check",
     "triage_gate",

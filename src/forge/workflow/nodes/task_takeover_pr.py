@@ -199,7 +199,8 @@ async def create_task_takeover_pr(state: WorkflowState) -> WorkflowState:
             update_state_timestamp(
                 {
                     **teardown_state,
-                    "current_node": "complete",
+                    "current_node": "wait_for_ci_gate",
+                    "is_paused": False,
                     "last_error": None,
                 }
             ),

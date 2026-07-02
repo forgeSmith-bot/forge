@@ -12,7 +12,10 @@ from forge.workflow.task_takeover.graph import (
     _route_after_answer,
     _route_after_generate_plan,
     _route_after_triage_check,
+    _route_ci_evaluation,
+    _route_human_review_task_takeover,
     build_task_takeover_graph,
+    complete_task_takeover,
     route_entry,
 )
 from forge.workflow.task_takeover.state import (
@@ -60,6 +63,13 @@ class TestTaskTakeoverGraphStructure:
             "execute_task_changes",
             "run_qualitative_review",
             "create_task_takeover_pr",
+            "wait_for_ci_gate",
+            "ci_evaluator",
+            "attempt_ci_fix",
+            "human_review_gate",
+            "implement_review",
+            "review_response_gate",
+            "complete_task_takeover",
         }
         for node in expected_nodes:
             assert node in compiled_graph.nodes
@@ -80,6 +90,12 @@ class TestPathTransitions:
             ("execute_task_changes", "execute_task_changes"),
             ("qualitative_review", "run_qualitative_review"),
             ("create_task_takeover_pr", "create_task_takeover_pr"),
+            ("wait_for_ci_gate", "wait_for_ci_gate"),
+            ("ci_evaluator", "ci_evaluator"),
+            ("attempt_ci_fix", "ci_evaluator"),
+            ("human_review_gate", "human_review_gate"),
+            ("implement_review", "implement_review"),
+            ("review_response_gate", "review_response_gate"),
             ("complete", END),
             ("", "triage_check"),
             ("unknown_node", "triage_check"),
@@ -172,6 +188,52 @@ class TestQualitativeReviewRouting:
         )
         # retry_count of 2 is at/above the limit of 2, so transition to escalate_blocked
         assert _route_after_qualitative_review(state) == "escalate_blocked"
+
+
+class TestPostPrRouting:
+    """Test Task Takeover post-PR CI and review routing."""
+
+    @pytest.mark.parametrize(
+        "ci_status, expected",
+        [
+            ("passed", "human_review_gate"),
+            ("fixing", "attempt_ci_fix"),
+            ("pending", END),
+            ("failed", "escalate_blocked"),
+            ("", "escalate_blocked"),
+        ],
+    )
+    def test_route_ci_evaluation(self, ci_status: str, expected: str) -> None:
+        state = make_task_state(ci_status=ci_status)
+        assert _route_ci_evaluation(state) == expected
+
+    def test_human_review_merge_routes_to_task_takeover_complete(self) -> None:
+        state = make_task_state(pr_merged=True, current_node="human_review_gate")
+        assert _route_human_review_task_takeover(state) == "complete_task_takeover"
+
+    def test_human_review_changes_requested_routes_to_implement_review(self) -> None:
+        state = make_task_state(
+            current_node="human_review_gate",
+            revision_requested=True,
+            feedback_comment="Please address this review feedback.",
+        )
+        assert _route_human_review_task_takeover(state) == "implement_review"
+
+    def test_human_review_paused_routes_to_end(self) -> None:
+        state = make_task_state(current_node="human_review_gate", is_paused=True)
+        assert _route_human_review_task_takeover(state) == END
+
+    def test_human_review_approved_routes_to_task_takeover_complete(self) -> None:
+        state = make_task_state(current_node="human_review_gate", is_paused=False)
+        assert _route_human_review_task_takeover(state) == "complete_task_takeover"
+
+    @pytest.mark.asyncio
+    async def test_complete_task_takeover_marks_workflow_complete(self) -> None:
+        state = make_task_state(current_node="human_review_gate", is_paused=True)
+        result = await complete_task_takeover(state)
+        assert result["current_node"] == "complete"
+        assert result["is_paused"] is False
+        assert result["ci_fix_attempt"] == 0
 
 
 class TestInteractiveGateBehavior:
