@@ -105,7 +105,7 @@ class TestTaskTakeoverExecutionNode:
 
         # Verify JIRA Client was called
         mock_jira.get_issue.assert_called_once_with("TASK-123")
-        mock_jira.add_comment.assert_called()
+        mock_jira.add_comment.assert_not_called()
         mock_jira.close.assert_called_once()
 
         # Verify ContainerRunner was called with correct parameters

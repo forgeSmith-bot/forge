@@ -68,7 +68,7 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
         if not is_resume:
             await jira.add_comment(
                 ticket_key,
-                "Received task/epic for Task Takeover — checking ticket completeness before starting planning.",
+                "Received this task/epic — checking ticket completeness before starting planning.",
             )
 
         # Step 2: Fetch full ticket content
@@ -146,7 +146,7 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
         fields_listed = "\n".join(f"- {f}" for f in missing_fields)
         await jira.add_comment(
             ticket_key,
-            "To proceed with task takeover planning, please reply with a comment starting "
+            "To proceed with planning, please reply with a comment starting "
             f"with `!` and provide the following information:\n\n{fields_listed}",
         )
         await jira.set_workflow_label(ticket_key, ForgeLabel.TASK_TRIAGE_PENDING)

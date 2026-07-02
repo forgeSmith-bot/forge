@@ -73,7 +73,10 @@ class TestTaskTakeoverPRNode:
     @pytest.mark.asyncio
     @patch("forge.workflow.nodes.task_takeover_pr.teardown_workspace")
     @patch("forge.workflow.nodes.task_takeover_pr.cleanup_podman_containers")
-    async def test_successful_pr_creation(self, mock_cleanup, mock_teardown) -> None:
+    @patch("forge.workflow.nodes.task_takeover_pr.set_pr_ticket_index", new_callable=AsyncMock)
+    async def test_successful_pr_creation(
+        self, mock_set_pr_ticket_index, mock_cleanup, mock_teardown
+    ) -> None:
         """Test successful PR creation, commenting, transition and teardown."""
         state = _make_state()
         mock_jira = _make_mock_jira()
@@ -116,6 +119,9 @@ class TestTaskTakeoverPRNode:
         assert "https://github.com/acme/backend/pull/42" in comment_arg
 
         mock_jira.transition_issue.assert_called_once_with("TASK-123", "In Review")
+        mock_set_pr_ticket_index.assert_called_once_with(
+            "https://github.com/acme/backend/pull/42", "TASK-123"
+        )
 
         # Assert cleanup/teardown
         mock_cleanup.assert_called_once_with("TASK-123")

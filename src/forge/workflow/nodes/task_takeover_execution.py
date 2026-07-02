@@ -10,7 +10,6 @@ from forge.integrations.jira.client import JiraClient
 from forge.sandbox.runner import ContainerConfig, ContainerRunner
 from forge.workflow.task_takeover.state import TaskTakeoverState
 from forge.workflow.utils import update_state_timestamp
-from forge.workflow.utils.jira_status import post_status_comment
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.manager import Workspace
 
@@ -51,16 +50,8 @@ async def execute_task_changes(state: TaskTakeoverState) -> TaskTakeoverState:
     try:
         # Get details from Jira for task implementation context
         task_issue = await jira.get_issue(current_task)
-        task_summary = task_issue.summary
         task_description = task_issue.description or ""
         plan_content = state.get("plan_content") or ""
-
-        # Post status comment that we are starting execution
-        await post_status_comment(
-            jira,
-            ticket_key,
-            f"🔨 Forge is implementing changes and tests for [{current_task}]: {task_summary}",
-        )
 
         # Build task description with requirements injected
         review_feedback = state.get("review_feedback")
@@ -118,20 +109,6 @@ async def execute_task_changes(state: TaskTakeoverState) -> TaskTakeoverState:
             committed = git.commit(commit_message)
 
         current_sha = git.get_current_sha()
-
-        # Post status comment based on results
-        if result.success:
-            await post_status_comment(
-                jira,
-                ticket_key,
-                f"✅ Task takeover implementation succeeded. Created commit: {commit_message[:50]}...",
-            )
-        else:
-            await post_status_comment(
-                jira,
-                ticket_key,
-                f"⚠️ Task takeover implementation failed/exited with code {result.exit_code}. Logs recorded.",
-            )
 
         # Store results, logs, and commit info in state
         return cast(

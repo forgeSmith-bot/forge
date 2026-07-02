@@ -8,6 +8,7 @@ from typing import cast
 
 from forge.integrations.github.client import GitHubClient
 from forge.integrations.jira.client import JiraClient
+from forge.orchestrator.checkpointer import set_pr_ticket_index
 from forge.workflow.nodes.pr_creation import (
     open_pull_request_from_fork,
     prepare_pull_request_target,
@@ -158,6 +159,15 @@ async def create_task_takeover_pr(state: WorkflowState) -> WorkflowState:
         # Create remote link in Jira as well for better integration
         with contextlib.suppress(Exception):
             await jira.create_remote_link(ticket_key, pr_url, pr_label)
+
+        try:
+            await set_pr_ticket_index(pr_url, ticket_key)
+        except Exception:
+            logger.warning(
+                f"Failed to index PR {pr_url} to {ticket_key}; "
+                "GitHub event routing will fall back to name-based extraction",
+                exc_info=True,
+            )
 
         # Step 5: Transition the Jira ticket status to "In Review"
         await jira.transition_issue(ticket_key, "In Review")

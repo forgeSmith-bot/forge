@@ -72,7 +72,7 @@ async def test_complete_ticket_passes_triage(
     assert mock_jira.add_comment.call_count == 2
     mock_jira.add_comment.assert_any_call(
         "TASK-123",
-        "Received task/epic for Task Takeover — checking ticket completeness before starting planning.",
+        "Received this task/epic — checking ticket completeness before starting planning.",
     )
     mock_jira.add_comment.assert_any_call(
         "TASK-123",
