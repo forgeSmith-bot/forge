@@ -281,6 +281,7 @@ class TestSyncCalledFromCreatePR:
         mock_jira.get_issue = AsyncMock(return_value=MagicMock(summary="Test feature"))
         mock_jira.add_comment = AsyncMock()
         mock_jira.create_remote_link = AsyncMock()
+        mock_jira.is_repo_draft = AsyncMock(return_value=False)
         mock_jira.close = AsyncMock()
 
         mock_git = MagicMock()

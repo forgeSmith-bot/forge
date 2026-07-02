@@ -40,6 +40,7 @@ def create_mock_jira_client():
     mock.create_remote_link = AsyncMock()
     mock.get_issue = AsyncMock()
     mock.set_workflow_label = AsyncMock()
+    mock.is_repo_draft = AsyncMock(return_value=False)
     
     # Mock issue with summary
     mock_issue = MagicMock()
