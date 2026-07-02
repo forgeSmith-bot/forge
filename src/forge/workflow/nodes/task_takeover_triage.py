@@ -15,6 +15,7 @@ from forge.models.workflow import ForgeLabel
 from forge.prompts import load_prompt
 from forge.workflow.task_takeover.state import TaskTakeoverState
 from forge.workflow.utils import update_state_timestamp
+from forge.workflow.utils.repo_resolution import resolve_current_repo
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,12 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
         issue = await jira.get_issue(ticket_key)
         comments = await jira.get_comments(ticket_key)
         comment_text = "\n\n".join(c.body for c in comments if c.body)
+        current_repo, _known_repos = await resolve_current_repo(
+            jira,
+            issue,
+            comment_text,
+            state.get("current_repo"),
+        )
 
         # Step 3: Invoke task takeover triage prompt
         user_prompt = load_prompt(
@@ -91,6 +98,9 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
         # Step 4: Parse result
         result_stripped = raw_result.strip()
         if result_stripped.lower() == "sufficient":
+            if current_repo and "/" in current_repo:
+                await jira.add_labels(ticket_key, [f"repo:{current_repo}"])
+
             pass_msg = (
                 "Thanks for the update — ticket now has enough information to proceed. "
                 "Starting plan generation — results will be posted here."
@@ -107,6 +117,10 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
                         "triage_missing_fields": [],
                         "current_node": "generate_plan",
                         "is_paused": False,
+                        "is_question": False,
+                        "revision_requested": False,
+                        "feedback_comment": None,
+                        "current_repo": current_repo,
                         "last_error": None,
                         "retry_count": 0,
                     }
@@ -132,7 +146,8 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
         fields_listed = "\n".join(f"- {f}" for f in missing_fields)
         await jira.add_comment(
             ticket_key,
-            f"To proceed with task takeover planning, please provide the following information:\n\n{fields_listed}",
+            "To proceed with task takeover planning, please reply with a comment starting "
+            f"with `!` and provide the following information:\n\n{fields_listed}",
         )
         await jira.set_workflow_label(ticket_key, ForgeLabel.TASK_TRIAGE_PENDING)
 

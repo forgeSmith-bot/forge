@@ -23,7 +23,7 @@ Here is the file metadata gathered from the repository to help guide your plan:
 
 ## Repository Grounding Requirements
 
-Before writing `.forge/plan.md`, inspect the relevant repository using available repository, GitHub, or filesystem tools.
+Before producing the plan, inspect the relevant repository using available repository, GitHub, or filesystem tools.
 
 - Read repo guidance when present: `AGENTS.md`, `CLAUDE.md`, `.claude/AGENTS.md`, `.claude/CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `Makefile`, language-specific project files, docs, and repo-local skills or agent instructions.
 - Confirm planned files, functions/classes, test locations, generated-file requirements, and validation commands against real repository contents.
@@ -43,5 +43,5 @@ Your plan MUST include:
 
 ---
 
-Produce a detailed implementation plan.
-Write the plan to `.forge/plan.md`.
+Produce a detailed implementation plan as Markdown.
+Return only the plan content; do not wrap it in code fences and do not write files.

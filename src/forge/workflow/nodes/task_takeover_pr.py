@@ -8,6 +8,10 @@ from typing import cast
 
 from forge.integrations.github.client import GitHubClient
 from forge.integrations.jira.client import JiraClient
+from forge.workflow.nodes.pr_creation import (
+    open_pull_request_from_fork,
+    prepare_pull_request_target,
+)
 from forge.workflow.nodes.workspace_setup import teardown_workspace
 from forge.workflow.task_takeover.state import TaskTakeoverState as WorkflowState
 from forge.workflow.utils import update_state_timestamp
@@ -114,26 +118,7 @@ async def create_task_takeover_pr(state: WorkflowState) -> WorkflowState:
         )
         git = GitOperations(workspace)
 
-        # Step 2: Push changes to fork
-        if not current_repo or "/" not in current_repo:
-            raise ValueError(
-                f"Invalid repository format '{current_repo}': must be in owner/repo format"
-            )
-
-        owner, repo = current_repo.split("/")
-        logger.info(f"Getting or creating fork for {current_repo}")
-        fork_data = await github.get_or_create_fork(owner, repo)
-        fork_owner = fork_data["owner"]["login"]
-        fork_repo = fork_data["name"]
-
-        # Sync fork with upstream main branch
-        await github.sync_fork_with_upstream(fork_owner, fork_repo)
-
-        # Add fork remote and push
-        git.add_fork_remote(fork_owner, fork_repo)
-        git.push_to_fork()
-
-        # Step 3: Fetch Jira issue details to construct the PR title/description
+        # Step 2: Fetch Jira issue details to construct the PR title/description
         ticket_summary = ""
         ticket_description = ""
         try:
@@ -151,19 +136,20 @@ async def create_task_takeover_pr(state: WorkflowState) -> WorkflowState:
             f"Co-authored-by: Forge <forge@noreply.anthropic.com>"
         )
 
-        # Step 4: Open a Pull Request from fork to upstream
-        pr_data = await github.create_pull_request(
-            owner=owner,
-            repo=repo,
+        # Step 3: Prepare the fork, push local changes, and open the pull request
+        pr_target = await prepare_pull_request_target(github, git, current_repo)
+        git.push_to_fork()
+        pr_data = await open_pull_request_from_fork(
+            github,
+            pr_target,
+            branch_name=branch_name,
             title=pr_title,
             body=pr_body,
-            head=f"{fork_owner}:{branch_name}",
-            base="main",
         )
         pr_url = pr_data.get("html_url", "")
         pr_number = pr_data.get("number")
 
-        # Step 5: Post the PR markdown link as a comment on Jira
+        # Step 4: Post the PR markdown link as a comment on Jira
         pr_label = f"PR #{pr_number}" if pr_number is not None else "Pull Request"
         pr_markdown_link = f"[{pr_label}]({pr_url})"
         comment_text = (
@@ -175,7 +161,7 @@ async def create_task_takeover_pr(state: WorkflowState) -> WorkflowState:
         with contextlib.suppress(Exception):
             await jira.create_remote_link(ticket_key, pr_url, pr_label)
 
-        # Step 6: Transition the Jira ticket status to "In Review"
+        # Step 5: Transition the Jira ticket status to "In Review"
         await jira.transition_issue(ticket_key, "In Review")
 
         # Update PR URL lists
@@ -189,11 +175,11 @@ async def create_task_takeover_pr(state: WorkflowState) -> WorkflowState:
             "pr_urls": pr_urls,
             "current_pr_url": pr_url,
             "current_pr_number": pr_number,
-            "fork_owner": fork_owner,
-            "fork_repo": fork_repo,
+            "fork_owner": pr_target.fork_owner,
+            "fork_repo": pr_target.fork_repo,
         }
 
-        # Step 7: Teardown workspace and container runner resources
+        # Step 6: Teardown workspace and container runner resources
         # Clean up any lingering container runners
         await cleanup_podman_containers(ticket_key)
 

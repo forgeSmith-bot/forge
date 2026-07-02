@@ -1,24 +1,24 @@
 """Planning node for Task Takeover workflow."""
 
-import contextlib
 import logging
 from pathlib import Path
 from typing import Any, cast
 
 from forge.config import get_settings
+from forge.integrations.agents import ForgeAgent
 from forge.integrations.jira.client import JiraClient
 from forge.models.workflow import ForgeLabel
 from forge.prompts import load_prompt
-from forge.sandbox.runner import ContainerConfig, ContainerRunner
 from forge.workflow.task_takeover.state import TaskTakeoverState
 from forge.workflow.utils import set_paused, update_state_timestamp
+from forge.workflow.utils.repo_resolution import resolve_current_repo
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.manager import WorkspaceManager
 
 logger = logging.getLogger(__name__)
 
 _MAX_COMMENT_CHARS = 25_000
-_TRUNCATION_NOTE = "*(Plan truncated — full plan available in container logs.)*"
+_TRUNCATION_NOTE = "*(Plan truncated — full plan retained in workflow state.)*"
 
 __all__ = ["generate_plan", "plan_approval_gate", "route_plan_approval"]
 
@@ -100,22 +100,6 @@ def _truncate_plan_comment(plan_content: str, max_chars: int = _MAX_COMMENT_CHAR
     return truncated + "\n\n" + _TRUNCATION_NOTE
 
 
-def _harvest_plan(workspace_path: Path) -> str:
-    """Read .forge/plan.md from the container workspace.
-
-    Raises:
-        FileNotFoundError: if plan.md was not written.
-        ValueError: if plan.md is empty.
-    """
-    plan_file = workspace_path / ".forge" / "plan.md"
-    if not plan_file.exists():
-        raise FileNotFoundError(f"plan.md not found at {plan_file}")
-    content = plan_file.read_text()
-    if not content.strip():
-        raise ValueError("plan.md is empty")
-    return content
-
-
 async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
     """Generate or regenerate task takeover plan.
 
@@ -135,13 +119,14 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
 
     settings = get_settings()
     jira = JiraClient(settings)
+    agent = ForgeAgent(settings)
 
     try:
         issue = await jira.get_issue(ticket_key)
         comments = await jira.get_comments(ticket_key)
         comment_text = "\n\n".join(c.body for c in comments if c.body)
 
-        # Notify Jira before we start container
+        # Notify Jira before planning starts.
         if is_revision:
             await jira.add_comment(
                 ticket_key,
@@ -154,15 +139,12 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
             )
 
         # 1. Determine and clone/checkout repository
-        current_repo = state.get("current_repo")
-        if not current_repo:
-            with contextlib.suppress(Exception):
-                current_repo = await jira.get_project_default_repo(issue.project_key)
-            if not current_repo:
-                with contextlib.suppress(Exception):
-                    repos = await jira.get_project_repos(issue.project_key)
-                    if repos:
-                        current_repo = repos[0]
+        current_repo, known_repos = await resolve_current_repo(
+            jira,
+            issue,
+            comment_text,
+            state.get("current_repo"),
+        )
 
         if not current_repo or current_repo == "unknown" or "/" not in current_repo:
             raise ValueError(f"No valid repository found for project {issue.project_key}")
@@ -184,9 +166,6 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
         file_metadata = _gather_file_metadata(workspace.path)
 
         # 4. Load project's known repos
-        known_repos: list[str] = []
-        with contextlib.suppress(Exception):
-            known_repos = await jira.get_project_repos(issue.project_key)
         if not known_repos:
             known_repos = [current_repo]
 
@@ -205,24 +184,28 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
         if is_revision:
             task_description += f"\n\n## Revision Request\nThis is a revision request. Please update the original plan based on the feedback below.\n\n### Original Plan\n{original_plan}\n\n### Feedback Comment\n{feedback_comment}\n"
 
-        # 6. Run container with ContainerRunner (skipping tests for planning speed)
-        runner = ContainerRunner(settings)
-        config = ContainerConfig(skip_tests=True)
-        result = await runner.run(
-            workspace_path=workspace.path,
-            task_summary=f"Plan task takeover for {ticket_key}",
-            task_description=task_description,
-            config=config,
-            ticket_key=ticket_key,
-            task_key=f"{ticket_key}-plan",
+        # 6. Generate the plan in-process. Planning is read-only and does not need the
+        # execution sandbox used for implementation.
+        new_plan = await agent.run_task(
+            task="task-takeover-planning",
+            prompt=task_description,
+            context={
+                "ticket_key": ticket_key,
+                "current_node": "generate_plan",
+                "current_repo": current_repo,
+                "workspace_path": str(workspace.path),
+            },
+            trace_context={
+                "ticket_key": ticket_key,
+                "ticket_type": state.get("ticket_type"),
+                "current_node": "generate_plan",
+                "current_repo": current_repo,
+            },
+            include_tools=True,
         )
-
-        if not result.success:
-            raise RuntimeError(
-                f"Container failed with exit_code={result.exit_code}: {result.stderr}"
-            )
-
-        new_plan = _harvest_plan(workspace.path)
+        new_plan = new_plan.strip()
+        if not new_plan:
+            raise ValueError("Task takeover planning agent returned an empty plan")
 
         # 7. Post the plan to Jira
         truncated_comment = _truncate_plan_comment(new_plan)
@@ -267,6 +250,7 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
         ):
             workspace_manager.destroy_workspace(workspace)
         await jira.close()
+        await agent.close()
 
 
 def plan_approval_gate(state: TaskTakeoverState) -> TaskTakeoverState:

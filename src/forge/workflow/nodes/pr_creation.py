@@ -1,6 +1,7 @@
 """PR creation node for opening pull requests."""
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from forge.config import get_settings
@@ -19,6 +20,63 @@ from forge.workspace.git_ops import GitOperations
 from forge.workspace.manager import Workspace
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class PullRequestTarget:
+    """Resolved upstream and fork repository for PR creation."""
+
+    owner: str
+    repo: str
+    fork_owner: str
+    fork_repo: str
+
+
+async def prepare_pull_request_target(
+    github: GitHubClient,
+    git: GitOperations,
+    current_repo: str,
+) -> PullRequestTarget:
+    """Prepare a fork remote for opening a pull request from the current workspace."""
+    if not current_repo or "/" not in current_repo:
+        raise ValueError(f"Invalid repository format '{current_repo}': must be in owner/repo format")
+
+    owner, repo = current_repo.split("/", 1)
+
+    logger.info(f"Getting or creating fork for {current_repo}")
+    fork_data = await github.get_or_create_fork(owner, repo)
+    fork_owner = fork_data["owner"]["login"]
+    fork_repo = fork_data["name"]
+
+    await github.sync_fork_with_upstream(fork_owner, fork_repo)
+    git.add_fork_remote(fork_owner, fork_repo)
+
+    return PullRequestTarget(
+        owner=owner,
+        repo=repo,
+        fork_owner=fork_owner,
+        fork_repo=fork_repo,
+    )
+
+
+async def open_pull_request_from_fork(
+    github: GitHubClient,
+    target: PullRequestTarget,
+    *,
+    branch_name: str,
+    title: str,
+    body: str,
+    base: str = "main",
+) -> dict:
+    """Open a pull request from the prepared fork branch to upstream."""
+    return await github.create_pull_request(
+        owner=target.owner,
+        repo=target.repo,
+        title=title,
+        body=body,
+        head=f"{target.fork_owner}:{branch_name}",
+        base=base,
+    )
 
 
 async def check_merge_conflicts(
@@ -126,20 +184,7 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
         )
         git = GitOperations(workspace)
 
-        # Parse owner/repo for upstream
-        owner, repo = current_repo.split("/")
-
-        # Get or create fork
-        logger.info(f"Getting or creating fork for {current_repo}")
-        fork_data = await github.get_or_create_fork(owner, repo)
-        fork_owner = fork_data["owner"]["login"]
-        fork_repo = fork_data["name"]
-
-        # Sync fork with upstream
-        await github.sync_fork_with_upstream(fork_owner, fork_repo)
-
-        # Add fork as remote
-        git.add_fork_remote(fork_owner, fork_repo)
+        pr_target = await prepare_pull_request_target(github, git, current_repo)
 
         # Check for merge conflicts before pushing
         has_conflicts, conflicting_files = await check_merge_conflicts(git, "main")
@@ -185,15 +230,12 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
         if not pr_body:
             pr_body = _build_pr_body(state, implemented_tasks)
 
-        # Create PR from fork to upstream
-        # Head format: "fork_owner:branch_name"
-        pr_data = await github.create_pull_request(
-            owner=owner,
-            repo=repo,
+        pr_data = await open_pull_request_from_fork(
+            github,
+            pr_target,
+            branch_name=branch_name,
             title=pr_title,
             body=pr_body,
-            head=f"{fork_owner}:{branch_name}",
-            base="main",
         )
 
         pr_url = pr_data.get("html_url", "")
@@ -244,8 +286,8 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
         await sync_pr_description(
             state,
             git,
-            owner=owner,
-            repo=repo,
+            owner=pr_target.owner,
+            repo=pr_target.repo,
             pr_number=pr_number,
             attempt=0,
         )
@@ -256,8 +298,8 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
                 "pr_urls": pr_urls,
                 "current_pr_url": pr_url,
                 "current_pr_number": pr_number,
-                "fork_owner": fork_owner,
-                "fork_repo": fork_repo,
+                "fork_owner": pr_target.fork_owner,
+                "fork_repo": pr_target.fork_repo,
                 "current_node": "teardown_workspace",
                 "last_error": None,
             }

@@ -29,6 +29,7 @@ from forge.workflow.utils import resolve_shared_resume_node
 
 logger = logging.getLogger(__name__)
 QUALITATIVE_REVIEW_MAX_ATTEMPTS = 2
+PLAN_MAX_ATTEMPTS = 3
 
 
 def route_entry(state: TaskTakeoverState) -> str:
@@ -89,6 +90,19 @@ def _route_after_triage_check(state: TaskTakeoverState) -> str:
     if node in ("triage_gate", "escalate_blocked"):
         return node
     return "triage_gate"
+
+
+def _route_after_generate_plan(state: TaskTakeoverState) -> str:
+    """Route after planning without pausing for approval when no plan was generated."""
+    current_node = state.get("current_node", "task_plan_approval_gate")
+    if current_node == "generate_plan" and state.get("last_error"):
+        if state.get("retry_count", 0) >= PLAN_MAX_ATTEMPTS:
+            return "escalate_blocked"
+        return "generate_plan"
+    if current_node in ("task_plan_approval_gate", "escalate_blocked"):
+        return current_node
+    logger.error(f"Task takeover plan generation returned unexpected node {current_node!r}")
+    return "escalate_blocked"
 
 
 def _route_after_answer(state: TaskTakeoverState) -> str:
@@ -196,7 +210,15 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     )
 
     # Planning flow
-    graph.add_edge("generate_plan", "task_plan_approval_gate")
+    graph.add_conditional_edges(
+        "generate_plan",
+        _route_after_generate_plan,
+        {
+            "generate_plan": "generate_plan",
+            "task_plan_approval_gate": "task_plan_approval_gate",
+            "escalate_blocked": "escalate_blocked",
+        },
+    )
     graph.add_conditional_edges(
         "task_plan_approval_gate",
         route_task_plan_approval,

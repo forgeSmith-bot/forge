@@ -10,6 +10,7 @@ from forge.models.workflow import ForgeLabel, TicketType
 from forge.workflow.gates.task_plan_approval import route_task_plan_approval
 from forge.workflow.task_takeover.graph import (
     _route_after_answer,
+    _route_after_generate_plan,
     _route_after_triage_check,
     build_task_takeover_graph,
     route_entry,
@@ -115,6 +116,26 @@ class TestPathTransitions:
         """Verify route_after_answer returns back to the original gate."""
         state = make_task_state(current_node=current_node)
         assert _route_after_answer(state) == expected_next
+
+    def test_route_after_generate_plan_success_routes_to_approval(self) -> None:
+        state = make_task_state(current_node="task_plan_approval_gate", last_error=None)
+        assert _route_after_generate_plan(state) == "task_plan_approval_gate"
+
+    def test_route_after_generate_plan_failure_retries_same_node(self) -> None:
+        state = make_task_state(
+            current_node="generate_plan",
+            last_error="container failed",
+            retry_count=1,
+        )
+        assert _route_after_generate_plan(state) == "generate_plan"
+
+    def test_route_after_generate_plan_retry_cap_routes_to_blocked(self) -> None:
+        state = make_task_state(
+            current_node="generate_plan",
+            last_error="container failed",
+            retry_count=3,
+        )
+        assert _route_after_generate_plan(state) == "escalate_blocked"
 
 
 class TestQualitativeReviewRouting:

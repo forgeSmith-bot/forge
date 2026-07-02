@@ -11,7 +11,6 @@ from forge.integrations.agents import ForgeAgent
 from forge.integrations.jira.client import JiraClient
 from forge.workflow.task_takeover.state import TaskTakeoverState as WorkflowState
 from forge.workflow.utils import update_state_timestamp
-from forge.workflow.utils.jira_status import post_status_comment
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.manager import Workspace
 
@@ -108,12 +107,6 @@ async def run_qualitative_review(state: WorkflowState) -> WorkflowState:
         description = task_issue.description or ""
         acceptance_criteria = _extract_acceptance_criteria(description)
 
-        await post_status_comment(
-            jira,
-            ticket_key,
-            f"🔍 Forge is performing a qualitative review on the changes for {current_task}...",
-        )
-
         # Initialize GitOperations to retrieve git diff
         workspace_obj = Workspace(
             path=Path(workspace_path),
@@ -154,12 +147,6 @@ async def run_qualitative_review(state: WorkflowState) -> WorkflowState:
         current_retry_count = state.get("qualitative_review_retry_count", 0)
         new_retry_count = current_retry_count + (0 if verdict == "adequate" else 1)
         failed = verdict != "adequate"
-
-        await post_status_comment(
-            jira,
-            ticket_key,
-            f"📋 Qualitative review verdict: **{verdict}**\n\nFeedback:\n{feedback}",
-        )
 
         return cast(
             WorkflowState,

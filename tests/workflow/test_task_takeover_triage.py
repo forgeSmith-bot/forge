@@ -144,5 +144,6 @@ async def test_incomplete_ticket_triage_permutations(
     # Verify detailed comment lists the missing fields
     assert mock_jira.add_comment.call_count == 2
     detailed_comment = mock_jira.add_comment.call_args_list[1].args[1]
+    assert "starting with `!`" in detailed_comment
     for field in expected_missing_list:
         assert field in detailed_comment

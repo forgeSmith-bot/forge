@@ -48,7 +48,10 @@ def mock_jira() -> MagicMock:
     )
     jira.get_comments = AsyncMock(return_value=[])
     jira.add_comment = AsyncMock()
+    jira.add_labels = AsyncMock()
     jira.set_workflow_label = AsyncMock()
+    jira.get_project_repos = AsyncMock(return_value=["owner/project"])
+    jira.get_project_default_repo = AsyncMock(return_value="owner/project")
     jira.close = AsyncMock()
     return jira
 
@@ -101,6 +104,7 @@ class TestTriageTaskSufficientTicket:
         assert result["current_node"] == "generate_plan"
         assert result["is_paused"] is False
         assert result["triage_missing_fields"] == []
+        mock_jira.add_labels.assert_awaited_once_with("TASK-001", ["repo:owner/project"])
 
     @pytest.mark.asyncio
     async def test_acknowledgement_comment_posted_first(
@@ -165,6 +169,74 @@ class TestTriageTaskSufficientTicket:
         comment_text = mock_jira.add_comment.call_args_list[0].args[1]
         assert "Thanks for the update" in comment_text
 
+    @pytest.mark.asyncio
+    async def test_resume_with_complete_ticket_consumes_revision_signal(
+        self,
+        resume_ticket_state: TaskTakeoverState,
+        mock_jira: MagicMock,
+        mock_agent_sufficient: MagicMock,
+    ) -> None:
+        """The ! comment used to resume triage must not make initial planning look like a revision."""
+        from forge.workflow.nodes.task_takeover_triage import triage_task
+
+        state = {
+            **resume_ticket_state,
+            "is_paused": False,
+            "revision_requested": True,
+            "feedback_comment": "!Proposed Solution/Approach: add a repo metadata flag.",
+            "is_question": True,
+        }
+
+        with (
+            patch(
+                "forge.workflow.nodes.task_takeover_triage.JiraClient", return_value=mock_jira
+            ),
+            patch(
+                "forge.workflow.nodes.task_takeover_triage.ForgeAgent",
+                return_value=mock_agent_sufficient,
+            ),
+        ):
+            result = await triage_task(cast(TaskTakeoverState, state))
+
+        assert result["triage_passed"] is True
+        assert result["current_node"] == "generate_plan"
+        assert result["is_paused"] is False
+        assert result["is_question"] is False
+        assert result["revision_requested"] is False
+        assert result["feedback_comment"] is None
+
+    @pytest.mark.asyncio
+    async def test_sufficient_ticket_sets_inferred_repo(
+        self,
+        complete_ticket_state: TaskTakeoverState,
+        mock_jira: MagicMock,
+        mock_agent_sufficient: MagicMock,
+    ) -> None:
+        """Triage should resolve the repo before planning starts."""
+        from forge.workflow.nodes.task_takeover_triage import triage_task
+
+        issue = await mock_jira.get_issue("TASK-001")
+        issue.summary = "Forge: allow repository metadata to open PRs as drafts first"
+        mock_jira.get_project_repos = AsyncMock(
+            return_value=["openshift/installer", "forge-sdlc/forge"]
+        )
+        mock_jira.get_project_default_repo = AsyncMock(return_value="openshift/installer")
+
+        with (
+            patch(
+                "forge.workflow.nodes.task_takeover_triage.JiraClient", return_value=mock_jira
+            ),
+            patch(
+                "forge.workflow.nodes.task_takeover_triage.ForgeAgent",
+                return_value=mock_agent_sufficient,
+            ),
+        ):
+            result = await triage_task(complete_ticket_state)
+
+        assert result["triage_passed"] is True
+        assert result["current_repo"] == "forge-sdlc/forge"
+        mock_jira.add_labels.assert_awaited_once_with("TASK-001", ["repo:forge-sdlc/forge"])
+
 
 class TestTriageTaskMissingFields:
     """When the ticket is missing required fields, triage pauses."""
@@ -195,6 +267,7 @@ class TestTriageTaskMissingFields:
         assert result["is_paused"] is True
         assert "Problem Statement" in result["triage_missing_fields"]
         assert "Acceptance Criteria" in result["triage_missing_fields"]
+        mock_jira.add_labels.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_applies_triage_pending_label_and_posts_comment(
@@ -222,6 +295,7 @@ class TestTriageTaskMissingFields:
         )
         assert mock_jira.add_comment.call_count == 2  # Ack comment + Missing fields comment
         missing_fields_comment = mock_jira.add_comment.call_args_list[1].args[1]
+        assert "starting with `!`" in missing_fields_comment
         assert "Problem Statement" in missing_fields_comment
         assert "Acceptance Criteria" in missing_fields_comment
 
