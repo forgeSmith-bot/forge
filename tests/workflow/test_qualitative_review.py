@@ -124,7 +124,6 @@ class TestRunQualitativeReviewNode:
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
             patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
-            patch("forge.workflow.nodes.task_takeover_review.post_status_comment"),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
@@ -140,6 +139,7 @@ class TestRunQualitativeReviewNode:
         assert result["qualitative_review_failed"] is False
         assert result["current_node"] == "qualitative_review"
         assert result["last_error"] is None
+        mock_jira.add_comment.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_run_qualitative_review_failure_state_updates(
@@ -156,7 +156,6 @@ class TestRunQualitativeReviewNode:
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
             patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
-            patch("forge.workflow.nodes.task_takeover_review.post_status_comment"),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
@@ -172,6 +171,7 @@ class TestRunQualitativeReviewNode:
         assert result["qualitative_review_failed"] is True
         assert result["current_node"] == "qualitative_review"
         assert result["last_error"] is None
+        mock_jira.add_comment.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_run_qualitative_review_retry_increment(
@@ -190,7 +190,6 @@ class TestRunQualitativeReviewNode:
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
             patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
-            patch("forge.workflow.nodes.task_takeover_review.post_status_comment"),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
@@ -241,7 +240,6 @@ new file mode 100644
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
             patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
-            patch("forge.workflow.nodes.task_takeover_review.post_status_comment"),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
@@ -281,7 +279,6 @@ new file mode 100644
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
             patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
-            patch("forge.workflow.nodes.task_takeover_review.post_status_comment"),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
@@ -322,7 +319,6 @@ new file mode 100644
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
             patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
-            patch("forge.workflow.nodes.task_takeover_review.post_status_comment"),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()

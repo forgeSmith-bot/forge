@@ -130,7 +130,7 @@ def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
     If the review is adequate (success), proceed to create_task_takeover_pr.
     If the review is failed or incomplete:
       - Check if we've reached the configured retry limit.
-      - If limit reached: transition to escalate_blocked.
+      - If limit reached: proceed to PR creation with the failed-review state retained.
       - Otherwise: transition back to execute_task_changes.
     """
     verdict = state.get("review_verdict")
@@ -143,9 +143,10 @@ def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
 
     if retry_count >= limit:
         logger.warning(
-            f"Qualitative review cap ({limit}) reached on task takeover workflow, transitioning to escalate_blocked"
+            f"Qualitative review cap ({limit}) reached on task takeover workflow, "
+            "proceeding to PR creation with review state retained"
         )
-        return "escalate_blocked"
+        return "create_task_takeover_pr"
 
     logger.info(
         f"Qualitative review verdict is {verdict!r}, retry attempt {retry_count}/{limit}, "

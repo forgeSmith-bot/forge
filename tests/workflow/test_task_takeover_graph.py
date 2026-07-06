@@ -179,15 +179,15 @@ class TestQualitativeReviewRouting:
         assert _route_after_qualitative_review(state) == "execute_task_changes"
 
     def test_route_after_qualitative_review_failed_at_or_above_limit(self) -> None:
-        """If review is failed or incomplete and at/above the limit, transition to escalate_blocked."""
+        """If review is failed or incomplete and at/above the limit, proceed to PR creation."""
         from forge.workflow.task_takeover.graph import _route_after_qualitative_review
 
         state = make_task_state(
             review_verdict="tests_incomplete",
             qualitative_review_retry_count=2,
         )
-        # retry_count of 2 is at/above the limit of 2, so transition to escalate_blocked
-        assert _route_after_qualitative_review(state) == "escalate_blocked"
+        # retry_count of 2 is at/above the limit of 2, so stop retrying but keep Jira silent.
+        assert _route_after_qualitative_review(state) == "create_task_takeover_pr"
 
 
 class TestPostPrRouting:
