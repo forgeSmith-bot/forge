@@ -168,26 +168,65 @@ Jira and GitHub send webhooks to Forge. Forge queues events, resumes the right w
 
 ## Quick Start
 
-To run Forge locally you need:
+### 1. Prerequisites
 
-- Python 3.11+
-- Redis Stack
-- Podman
-- Jira Cloud API access
-- GitHub access
-- LLM backend access through a direct model provider API or Google Vertex AI
+Before running Forge locally, ensure you have the following installed and configured:
 
-Then:
+- **Python 3.11+**
+- **Podman** (or Docker)
+- **API Access Tokens**:
+  - Jira Cloud API credentials (base URL, API token, user email)
+  - GitHub personal access token (with repository scope)
+  - LLM Backend Access (Anthropic Claude API credentials or Google Vertex AI authentication)
+
+### 2. Core Services
+
+To start the local development environment, clone the repository, synchronize the environment, and spin up the required core services:
 
 ```bash
 git clone https://github.com/Forge-sdlc/forge.git
 cd forge
 uv sync
 cp .env.example .env
+# Edit .env with your Jira, GitHub, and LLM credentials
+
+# 1. Start Redis Stack (using developer compose configuration)
+docker compose -f devtools/docker-compose.dev.yml up -d redis
+
+# 2. Build the container image for isolated code execution
 podman build -t forge-dev:latest -f containers/Containerfile containers/
-docker compose up redis -d
+
+# 3. Start the FastAPI Gateway
 uv run uvicorn forge.main:app --reload --port 8000 --host 0.0.0.0
+
+# 4. Start the background worker process
 uv run forge worker
+```
+
+### 3. Optional Observability Services
+
+Forge supports extensive real-time telemetry, including Prometheus metrics, Langfuse traces, and local Grafana dashboards.
+
+#### Monitoring (Prometheus & Grafana)
+
+Run Prometheus and Grafana for metrics and dashboard visualization:
+
+```bash
+docker compose -f devtools/docker-compose.dev.yml up -d prometheus grafana
+```
+
+Access the service consoles via these local endpoints:
+- **Prometheus Dashboard:** [http://localhost:9092](http://localhost:9092)
+- **Grafana Dashboards:** [http://localhost:3010](http://localhost:3010) (default credentials: `admin` / `grafana`)
+
+#### Tracing (Langfuse)
+
+To capture workflow execution steps, inputs, and outputs with Langfuse, configure your `.env` file with your credentials:
+
+```env
+LANGFUSE_PUBLIC_KEY="pk-lf-..."
+LANGFUSE_SECRET_KEY="sk-lf-..."
+LANGFUSE_HOST="https://cloud.langfuse.com" # Or your custom/local endpoint
 ```
 
 See [Getting Started](https://Forge-sdlc.github.io/forge/getting-started/) for the full setup path, including environment variables, webhooks, and local development options.
