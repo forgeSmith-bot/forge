@@ -168,27 +168,90 @@ Jira and GitHub send webhooks to Forge. Forge queues events, resumes the right w
 
 ## Quick Start
 
-To run Forge locally you need:
+This guide helps you set up the core Forge orchestrator and supporting services locally on your machine.
 
-- Python 3.11+
-- Redis Stack
-- Podman
-- Jira Cloud API access
-- GitHub access
-- LLM backend access through a direct model provider API or Google Vertex AI
+### Prerequisites
 
-Then:
+To run Forge locally, you will need:
+* **Python 3.11+**
+* **Podman** (or Docker) for containerized code execution
+* **Jira Cloud API access** (API token, user email, and base URL)
+* **GitHub personal access token** (classic or fine-grained with repo access)
+* **LLM backend credentials** (direct Anthropic API key, or Google Vertex AI credentials)
 
+---
+
+### Step-by-Step Installation
+
+#### 1. Clone the Repository
+Clone and navigate to the project directory:
 ```bash
 git clone https://github.com/Forge-sdlc/forge.git
 cd forge
+```
+
+#### 2. Set Up the Environment
+We use `uv` for python package and environment management. Initialize the environment and install dependencies:
+```bash
 uv sync
+```
+
+Copy the example environment configuration to `.env`:
+```bash
 cp .env.example .env
-podman build -t forge-dev:latest -f containers/Containerfile containers/
-docker compose up redis -d
+```
+Open `.env` in your text editor and fill in your required LLM provider credentials, Jira API details, and GitHub tokens (as outlined in the configuration comments).
+
+#### 3. Build the Task Execution Image
+Forge executes code changes in isolated, ephemeral environments. Build the local task execution container image using Podman:
+```bash
+podman build -t localhost/forge-dev:latest -f containers/Containerfile containers/
+```
+*(Note: Keep `CONTAINER_IMAGE=localhost/forge-dev:latest` inside your `.env` so Forge knows to target this local image).*
+
+---
+
+### Running Core Services
+
+#### 4. Start Redis Stack
+Forge uses Redis Stack (not standard Redis) for state checkpointing and event streams. Spin up a Redis Stack container on port `6380` to avoid conflict with other Redis instances:
+```bash
+podman run -d --name redis-stack -p 6380:6379 redis/redis-stack-server:latest
+```
+
+#### 5. Start the FastAPI Gateway
+The API gateway receives incoming Jira and GitHub webhooks. Start the FastAPI server using `uv`:
+```bash
 uv run uvicorn forge.main:app --reload --port 8000 --host 0.0.0.0
+```
+
+#### 6. Start the Forge Worker
+The Celery/workflow worker processes background tasks and drives the LangGraph workflow graph. Run the worker in a separate terminal:
+```bash
 uv run forge worker
 ```
+
+---
+
+### Running Extra Observability Services (Optional)
+
+Forge includes a developer observability stack that provides Prometheus metrics, Langfuse tracing, and preconfigured Grafana dashboards for local performance tuning and monitoring.
+
+#### Local Prometheus & Grafana Monitoring
+You can spin up Prometheus and Grafana using Docker Compose:
+```bash
+docker compose -f devtools/docker-compose.dev.yml up -d
+```
+Once started, the following local dashboards will be available:
+- **Prometheus**: `http://localhost:9092`
+- **Grafana**: `http://localhost:3010` (Default credentials: username `admin`, password `grafana`)
+
+#### LLM Tracing with Langfuse
+To enable complete LLM execution tracing and inspect agent tool calls:
+1. Set `LANGFUSE_ENABLED=true` in your `.env`.
+2. Configure your public/secret keys and point `LANGFUSE_HOST` to your instance (e.g., `https://cloud.langfuse.com` or a local self-hosted instance).
+
+---
 
 See [Getting Started](https://Forge-sdlc.github.io/forge/getting-started/) for the full setup path, including environment variables, webhooks, and local development options.
 
