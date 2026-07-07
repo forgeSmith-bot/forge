@@ -24,6 +24,56 @@ from forge.workspace.manager import Workspace
 logger = logging.getLogger(__name__)
 
 
+def _route_after_repo_pr(state: WorkflowState) -> WorkflowState:
+    """Route to the next planned repository or CI after a repo PR is created."""
+    repos_completed = list(state.get("repos_completed", []))
+    current_repo = state.get("current_repo")
+
+    if current_repo and current_repo not in repos_completed:
+        repos_completed.append(current_repo)
+
+    repos_to_process = state.get("repos_to_process", [])
+    remaining = [repo for repo in repos_to_process if repo not in repos_completed]
+
+    if remaining:
+        return cast(
+            WorkflowState,
+            update_state_timestamp(
+                {
+                    **state,
+                    "repos_completed": repos_completed,
+                    "current_repo": remaining[0],
+                    "implemented_tasks": [],
+                    "current_task_key": None,
+                    "fork_owner": None,
+                    "fork_repo": None,
+                    "current_pr_url": None,
+                    "current_pr_number": None,
+                    "review_verdict": None,
+                    "review_feedback": None,
+                    "qualitative_review_retry_count": 0,
+                    "qualitative_review_failed": False,
+                    "current_node": "setup_workspace",
+                    "is_paused": False,
+                    "last_error": None,
+                }
+            ),
+        )
+
+    return cast(
+        WorkflowState,
+        update_state_timestamp(
+            {
+                **state,
+                "repos_completed": repos_completed,
+                "current_node": "wait_for_ci_gate",
+                "is_paused": False,
+                "last_error": None,
+            }
+        ),
+    )
+
+
 async def cleanup_podman_containers(ticket_key: str) -> None:
     """Stop and remove any running or stopped podman containers related to the ticket.
 
@@ -198,17 +248,7 @@ async def create_task_takeover_pr(state: WorkflowState) -> WorkflowState:
         # Clean up files and delete workspace
         teardown_state = await teardown_workspace(cast(WorkflowState, state_with_pr))
 
-        return cast(
-            WorkflowState,
-            update_state_timestamp(
-                {
-                    **teardown_state,
-                    "current_node": "wait_for_ci_gate",
-                    "is_paused": False,
-                    "last_error": None,
-                }
-            ),
-        )
+        return _route_after_repo_pr(cast(WorkflowState, teardown_state))
 
     except Exception as e:
         logger.error(f"Task takeover PR creation node failed for {ticket_key}: {e}")

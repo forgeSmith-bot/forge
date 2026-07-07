@@ -297,7 +297,16 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
             "escalate_blocked": "escalate_blocked",
         },
     )
-    graph.add_edge("create_task_takeover_pr", "wait_for_ci_gate")
+    graph.add_conditional_edges(
+        "create_task_takeover_pr",
+        lambda s: s.get("current_node", "wait_for_ci_gate"),
+        {
+            "setup_workspace": "setup_workspace",
+            "wait_for_ci_gate": "wait_for_ci_gate",
+            "create_task_takeover_pr": "create_task_takeover_pr",
+            "escalate_blocked": "escalate_blocked",
+        },
+    )
     graph.add_conditional_edges(
         "wait_for_ci_gate",
         lambda s: END if s.get("is_paused") else "ci_evaluator",

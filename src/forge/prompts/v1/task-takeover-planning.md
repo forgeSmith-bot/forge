@@ -41,7 +41,7 @@ Your plan MUST include:
 1. **Target Files**: List the specific, existing repository files to be modified, or new files to be created, using repository-relative paths only.
 2. **Implementation Steps**: Clear, sequential steps for implementing the proposed solution/approach.
 3. **Test Plans**: A detailed validation plan describing how the changes will be tested. Map the proposed solutions to concrete unit or integration tests, naming specific test commands and test files (existing or new) to run.
-4. **Repository Tags**: Include at least one `repo:<owner>/<repo>` tag using only names from the Available Repositories section. For single-repository tasks, include exactly one repo tag.
+4. **Repository Tags**: Include at least one `repo:<owner>/<repo>` tag using only names from the Available Repositories section. For single-repository tasks, include exactly one repo tag. For genuinely cross-repository tasks, include every affected repo tag and organize Target Files, Implementation Steps, and Test Plans by repository so each repo can be implemented and opened as its own PR.
 
 ---
 

@@ -14,6 +14,8 @@ def _make_state(
     workspace_path="/tmp/ws",
     current_repo="acme/backend",
     implemented_tasks=None,
+    repos_to_process=None,
+    repos_completed=None,
 ):
     return {
         "ticket_key": ticket_key,
@@ -24,6 +26,8 @@ def _make_state(
         "last_error": None,
         "workspace_path": workspace_path,
         "current_repo": current_repo,
+        "repos_to_process": repos_to_process or [],
+        "repos_completed": repos_completed or [],
         "implemented_tasks": implemented_tasks or [],
         "context": {"branch_name": "forge/TASK-123", "guardrails": ""},
     }
@@ -152,7 +156,62 @@ class TestTaskTakeoverPRNode:
         assert result_state["current_pr_number"] == 42
         assert result_state["fork_owner"] == "fork-owner"
         assert result_state["fork_repo"] == "backend"
+        assert result_state["repos_completed"] == ["acme/backend"]
         assert "https://github.com/acme/backend/pull/42" in result_state["pr_urls"]
+
+    @pytest.mark.asyncio
+    @patch("forge.workflow.nodes.task_takeover_pr.teardown_workspace")
+    @patch("forge.workflow.nodes.task_takeover_pr.cleanup_podman_containers")
+    @patch("forge.workflow.nodes.task_takeover_pr.set_pr_ticket_index", new_callable=AsyncMock)
+    @patch("forge.workflow.nodes.task_takeover_pr._generate_pr_body_with_agent")
+    async def test_pr_creation_routes_to_next_repo_when_plan_has_remaining_repos(
+        self, mock_generate_body, mock_set_pr_ticket_index, mock_cleanup, mock_teardown
+    ) -> None:
+        """Cross-repo task takeover opens one PR, then advances to the next repo workspace."""
+        state = _make_state(
+            repos_to_process=["acme/backend", "acme/frontend"],
+            repos_completed=[],
+        )
+        state["review_verdict"] = "tests_incomplete"
+        state["review_feedback"] = "Previous repo feedback"
+        state["qualitative_review_retry_count"] = 2
+        state["qualitative_review_failed"] = True
+
+        mock_jira = _make_mock_jira()
+        mock_github = _make_mock_github()
+        mock_git = _make_mock_git()
+        mock_generate_body.return_value = "## Summary\n\nGenerated body for backend repo."
+
+        async def fake_teardown(s):
+            return {**s, "workspace_path": None, "current_node": "workspace_complete"}
+
+        mock_teardown.side_effect = fake_teardown
+
+        with (
+            patch("forge.workflow.nodes.task_takeover_pr.JiraClient", return_value=mock_jira),
+            patch("forge.workflow.nodes.task_takeover_pr.GitHubClient", return_value=mock_github),
+            patch("forge.workflow.nodes.task_takeover_pr.GitOperations", return_value=mock_git),
+        ):
+            result_state = await create_task_takeover_pr(state)
+
+        assert result_state["current_node"] == "setup_workspace"
+        assert result_state["current_repo"] == "acme/frontend"
+        assert result_state["repos_completed"] == ["acme/backend"]
+        assert result_state["workspace_path"] is None
+        assert result_state["fork_owner"] is None
+        assert result_state["fork_repo"] is None
+        assert result_state["current_pr_url"] is None
+        assert result_state["current_pr_number"] is None
+        assert result_state["implemented_tasks"] == []
+        assert result_state["review_verdict"] is None
+        assert result_state["review_feedback"] is None
+        assert result_state["qualitative_review_retry_count"] == 0
+        assert result_state["qualitative_review_failed"] is False
+        assert "https://github.com/acme/backend/pull/42" in result_state["pr_urls"]
+        mock_cleanup.assert_called_once_with("TASK-123")
+        mock_set_pr_ticket_index.assert_called_once_with(
+            "https://github.com/acme/backend/pull/42", "TASK-123"
+        )
 
     @pytest.mark.asyncio
     @patch("forge.workflow.nodes.task_takeover_pr.teardown_workspace")
