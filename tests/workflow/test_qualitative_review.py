@@ -45,6 +45,18 @@ def _make_mock_jira(description: str = "Acceptance Criteria:\n- Foo\n- Bar") -> 
     return jira
 
 
+def _make_mock_runner(stdout: str) -> MagicMock:
+    runner = MagicMock()
+    result = MagicMock()
+    result.success = True
+    result.exit_code = 0
+    result.stdout = stdout
+    result.stderr = ""
+    result.error_message = None
+    runner.run = AsyncMock(return_value=result)
+    return runner
+
+
 class TestParseQualitativeReview:
     """Tests for _parse_qualitative_review helper."""
 
@@ -115,20 +127,20 @@ class TestRunQualitativeReviewNode:
     ) -> None:
         """Verify state updates when qualitative review passes (verdict is adequate)."""
         mock_jira = _make_mock_jira()
-        mock_agent = AsyncMock()
-        mock_agent.run_task = AsyncMock(
-            return_value="verdict: adequate\nfeedback: All acceptance criteria met and automated tests verified."
+        mock_runner = _make_mock_runner(
+            "verdict: adequate\nfeedback: All acceptance criteria met and automated tests verified."
         )
 
         with (
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
-            patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
+            patch("forge.workflow.nodes.task_takeover_review.ContainerRunner", return_value=mock_runner),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
             mock_git_instance._run_git.return_value.returncode = 0
             mock_git_instance._run_git.return_value.stdout = "diff contents"
+            mock_git_instance.has_uncommitted_changes = MagicMock(return_value=False)
             mock_git.return_value = mock_git_instance
 
             result = await run_qualitative_review(base_task_state)
@@ -140,6 +152,11 @@ class TestRunQualitativeReviewNode:
         assert result["current_node"] == "qualitative_review"
         assert result["last_error"] is None
         mock_jira.add_comment.assert_not_called()
+        mock_runner.run.assert_called_once()
+        _, kwargs = mock_runner.run.call_args
+        assert kwargs["task_key"] == "TASK-101-review"
+        assert kwargs["repo_name"] == "owner/repo"
+        assert "repo-local review guidance" in kwargs["task_description"]
 
     @pytest.mark.asyncio
     async def test_run_qualitative_review_failure_state_updates(
@@ -147,20 +164,20 @@ class TestRunQualitativeReviewNode:
     ) -> None:
         """Verify state updates and retry metric increment when review fails."""
         mock_jira = _make_mock_jira()
-        mock_agent = AsyncMock()
-        mock_agent.run_task = AsyncMock(
-            return_value="verdict: tests_incomplete\nfeedback: No automated tests found in the git diff."
+        mock_runner = _make_mock_runner(
+            "verdict: tests_incomplete\nfeedback: No automated tests found in the git diff."
         )
 
         with (
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
-            patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
+            patch("forge.workflow.nodes.task_takeover_review.ContainerRunner", return_value=mock_runner),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
             mock_git_instance._run_git.return_value.returncode = 0
             mock_git_instance._run_git.return_value.stdout = "diff contents"
+            mock_git_instance.has_uncommitted_changes = MagicMock(return_value=False)
             mock_git.return_value = mock_git_instance
 
             result = await run_qualitative_review(base_task_state)
@@ -181,20 +198,20 @@ class TestRunQualitativeReviewNode:
         base_task_state["qualitative_review_retry_count"] = 1
 
         mock_jira = _make_mock_jira()
-        mock_agent = AsyncMock()
-        mock_agent.run_task = AsyncMock(
-            return_value="verdict: tests_incomplete\nfeedback: Still lacking necessary test coverage."
+        mock_runner = _make_mock_runner(
+            "verdict: tests_incomplete\nfeedback: Still lacking necessary test coverage."
         )
 
         with (
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
-            patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
+            patch("forge.workflow.nodes.task_takeover_review.ContainerRunner", return_value=mock_runner),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
             mock_git_instance._run_git.return_value.returncode = 0
             mock_git_instance._run_git.return_value.stdout = "diff contents"
+            mock_git_instance.has_uncommitted_changes = MagicMock(return_value=False)
             mock_git.return_value = mock_git_instance
 
             result = await run_qualitative_review(base_task_state)
@@ -213,10 +230,9 @@ class TestRunQualitativeReviewNode:
         mock_jira = _make_mock_jira(
             description="Acceptance Criteria:\n1. Must implement user authentication.\n2. Must add tests."
         )
-        mock_agent = AsyncMock()
         # Mocking LLM confirming that the diff met all requirements and added tests
-        mock_agent.run_task = AsyncMock(
-            return_value="verdict: adequate\nfeedback: Perfect, all requirements met and tests are written."
+        mock_runner = _make_mock_runner(
+            "verdict: adequate\nfeedback: Perfect, all requirements met and tests are written."
         )
 
         valid_diff = """diff --git a/src/auth.py b/src/auth.py
@@ -239,12 +255,13 @@ new file mode 100644
         with (
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
-            patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
+            patch("forge.workflow.nodes.task_takeover_review.ContainerRunner", return_value=mock_runner),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
             mock_git_instance._run_git.return_value.returncode = 0
             mock_git_instance._run_git.return_value.stdout = valid_diff
+            mock_git_instance.has_uncommitted_changes = MagicMock(return_value=False)
             mock_git.return_value = mock_git_instance
 
             result = await run_qualitative_review(base_task_state)
@@ -260,10 +277,9 @@ new file mode 100644
         mock_jira = _make_mock_jira(
             description="Acceptance Criteria:\n1. Must implement user authentication.\n2. Must add tests."
         )
-        mock_agent = AsyncMock()
         # Mocking LLM indicating that no automated test is found
-        mock_agent.run_task = AsyncMock(
-            return_value="verdict: tests_incomplete\nfeedback: No automated test was found in the git diff."
+        mock_runner = _make_mock_runner(
+            "verdict: tests_incomplete\nfeedback: No automated test was found in the git diff."
         )
 
         invalid_diff = """diff --git a/src/auth.py b/src/auth.py
@@ -278,12 +294,13 @@ new file mode 100644
         with (
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
-            patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
+            patch("forge.workflow.nodes.task_takeover_review.ContainerRunner", return_value=mock_runner),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
             mock_git_instance._run_git.return_value.returncode = 0
             mock_git_instance._run_git.return_value.stdout = invalid_diff
+            mock_git_instance.has_uncommitted_changes = MagicMock(return_value=False)
             mock_git.return_value = mock_git_instance
 
             result = await run_qualitative_review(base_task_state)
@@ -299,10 +316,9 @@ new file mode 100644
         mock_jira = _make_mock_jira(
             description="Acceptance Criteria:\n1. Must implement user authentication.\n2. Must add tests."
         )
-        mock_agent = AsyncMock()
         # Mocking LLM indicating that the implementation is incomplete or buggy
-        mock_agent.run_task = AsyncMock(
-            return_value="verdict: tests_incomplete\nfeedback: The user authentication logic is missing password hashing requirement."
+        mock_runner = _make_mock_runner(
+            "verdict: tests_incomplete\nfeedback: The user authentication logic is missing password hashing requirement."
         )
 
         invalid_diff = """diff --git a/src/auth.py b/src/auth.py
@@ -318,12 +334,13 @@ new file mode 100644
         with (
             patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
             patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
-            patch("forge.workflow.nodes.task_takeover_review.ForgeAgent", return_value=mock_agent),
+            patch("forge.workflow.nodes.task_takeover_review.ContainerRunner", return_value=mock_runner),
         ):
             mock_git_instance = MagicMock()
             mock_git_instance._run_git = MagicMock()
             mock_git_instance._run_git.return_value.returncode = 0
             mock_git_instance._run_git.return_value.stdout = invalid_diff
+            mock_git_instance.has_uncommitted_changes = MagicMock(return_value=False)
             mock_git.return_value = mock_git_instance
 
             result = await run_qualitative_review(base_task_state)

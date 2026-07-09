@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import cast
 
 from forge.config import get_settings
-from forge.integrations.agents import ForgeAgent
 from forge.integrations.jira.client import JiraClient
+from forge.sandbox.runner import ContainerConfig, ContainerRunner
 from forge.workflow.task_takeover.state import TaskTakeoverState as WorkflowState
 from forge.workflow.utils import update_state_timestamp
 from forge.workspace.git_ops import GitOperations
@@ -71,7 +71,7 @@ def _parse_qualitative_review(output: str) -> tuple[str, str]:
 
 
 async def run_qualitative_review(state: WorkflowState) -> WorkflowState:
-    """Assess git diff against Jira ticket Acceptance Criteria using a read-only LLM reviewer.
+    """Assess git diff against Jira ticket Acceptance Criteria using a review-only container.
 
     Args:
         state: Current workflow state.
@@ -117,9 +117,6 @@ async def run_qualitative_review(state: WorkflowState) -> WorkflowState:
         git = GitOperations(workspace_obj)
         git_diff = _get_git_diff(git)
 
-        # Set up a read-only ForgeAgent (include_tools=False)
-        agent = ForgeAgent(settings)
-
         # Prepare the qualitative review prompt
         from forge.prompts import load_prompt
 
@@ -127,20 +124,29 @@ async def run_qualitative_review(state: WorkflowState) -> WorkflowState:
             "task-takeover-review",
             acceptance_criteria=acceptance_criteria,
             git_diff=git_diff,
+            workspace_path=workspace_path,
         )
 
-        # Run review via agent
-        response = await agent.run_task(
-            task="task-takeover-review",
-            prompt=prompt_content,
-            include_tools=False,
-            trace_context={
-                "ticket_key": ticket_key,
-                "current_node": "qualitative_review",
-            },
+        runner = ContainerRunner(settings)
+        result = await runner.run(
+            workspace_path=Path(workspace_path),
+            task_summary=f"Review task takeover changes for {current_task}",
+            task_description=prompt_content,
+            config=ContainerConfig(),
+            ticket_key=ticket_key,
+            task_key=f"{current_task}-review",
+            repo_name=current_repo,
+            previous_task_keys=state.get("implemented_tasks", []),
         )
+
+        if git.has_uncommitted_changes():
+            raise RuntimeError(
+                "Task takeover reviewer modified the workspace; review containers must not edit, "
+                "stage, commit, or generate files."
+            )
 
         # Parse verdict and feedback
+        response = "\n".join(part for part in (result.stdout, result.stderr) if part)
         verdict, feedback = _parse_qualitative_review(response)
 
         # Update retry metrics
