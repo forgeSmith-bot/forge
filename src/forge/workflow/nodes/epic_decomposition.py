@@ -102,7 +102,9 @@ async def decompose_epics(state: WorkflowState) -> WorkflowState:
                 logger.error(
                     f"Project {project_key}: {e} — posting config instructions and blocking"
                 )
-                await jira.add_comment(ticket_key, _missing_repo_config_comment(project_key))
+                await post_status_comment(
+                    jira, ticket_key, _missing_repo_config_comment(project_key)
+                )
                 await jira.set_workflow_label(ticket_key, ForgeLabel.BLOCKED)
                 return {**state, "last_error": str(e), "current_node": "decompose_epics"}
             logger.warning(f"Project {project_key}: {e} — falling back to GITHUB_KNOWN_REPOS")
@@ -187,6 +189,15 @@ async def decompose_epics(state: WorkflowState) -> WorkflowState:
             except Exception as e:
                 jira_error = str(e)
                 logger.warning(f"Failed to set workflow label for {ticket_key}: {e}")
+
+            await jira.add_comment(
+                ticket_key,
+                "## 🤖 Forge interaction options\n\n"
+                f"- ✅ **Approve:** add `{ForgeLabel.PLAN_APPROVED.value}` to continue.\n"
+                "- ♻️ **Revise all epics:** add a comment starting with `!` on this ticket.\n"
+                "- 🔧 **Revise a single epic:** add a comment starting with `!` on the Epic.\n"
+                "- ❓ **Ask a question:** add a Jira comment starting with `?`.",
+            )
 
             # Store plan summary in generation_context so Q&A can reference it
             generation_context = state.get("generation_context", {})
@@ -341,7 +352,8 @@ async def update_single_epic(state: WorkflowState) -> WorkflowState:
         await jira.update_description(epic_key, new_plan)
 
         # Add comment to Epic acknowledging revision
-        await jira.add_comment(
+        await post_status_comment(
+            jira,
             epic_key,
             "Implementation plan has been revised based on feedback.",
         )
