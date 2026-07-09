@@ -135,12 +135,22 @@ def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
       - Check if we've reached the configured retry limit.
       - If limit reached: proceed to PR creation with the failed-review state retained.
       - Otherwise: transition back to execute_task_changes.
+    If the node hit an unrecoverable error (no workspace), escalate.
     """
     verdict = state.get("review_verdict")
     retry_count = state.get("qualitative_review_retry_count", 0)
+    last_error = state.get("last_error")
 
     if verdict == "adequate":
         return "create_pr"
+
+    # Unrecoverable errors (no workspace, infrastructure failure) should escalate
+    # instead of looping — retrying without a workspace will never succeed.
+    if last_error and not verdict:
+        logger.warning(
+            f"Qualitative review hit an error without producing a verdict: {last_error}"
+        )
+        return "escalate_blocked"
 
     limit = QUALITATIVE_REVIEW_MAX_ATTEMPTS
 

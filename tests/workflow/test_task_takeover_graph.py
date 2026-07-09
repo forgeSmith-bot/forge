@@ -191,6 +191,16 @@ class TestQualitativeReviewRouting:
         # retry_count of 2 is at/above the limit of 2, so stop retrying but keep Jira silent.
         assert _route_after_qualitative_review(state) == "create_pr"
 
+    def test_route_after_qualitative_review_error_without_verdict_escalates(self) -> None:
+        """If review hit an error without producing a verdict, escalate to blocked."""
+        from forge.workflow.task_takeover.graph import _route_after_qualitative_review
+
+        state = make_task_state(
+            last_error="Workspace not set up",
+            qualitative_review_retry_count=0,
+        )
+        assert _route_after_qualitative_review(state) == "escalate_blocked"
+
 
 class TestPostPrRouting:
     """Test Task Takeover post-PR CI and review routing."""
