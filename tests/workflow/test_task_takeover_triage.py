@@ -66,18 +66,11 @@ async def test_complete_ticket_passes_triage(
     assert result["is_paused"] is False
     assert result["triage_missing_fields"] == []
 
-    # Check Jira interactions
-    # 1. Ack comment posted first
-    # 2. Success comment posted
+    # Check Jira interactions (comments go through post_status_comment which prepends emojis)
     assert mock_jira.add_comment.call_count == 2
-    mock_jira.add_comment.assert_any_call(
-        "TASK-123",
-        "Received this task/epic — checking ticket completeness before starting planning.",
-    )
-    mock_jira.add_comment.assert_any_call(
-        "TASK-123",
-        "Ticket has enough information to proceed. Starting plan generation — results will be posted here.",
-    )
+    comments = [call.args[1] for call in mock_jira.add_comment.call_args_list]
+    assert any("checking ticket completeness" in c for c in comments)
+    assert any("Starting plan generation" in c for c in comments)
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,7 @@ from forge.models.workflow import ForgeLabel
 from forge.prompts import load_prompt
 from forge.workflow.task_takeover.state import TaskTakeoverState
 from forge.workflow.utils import set_paused, update_state_timestamp
+from forge.workflow.utils.jira_status import post_status_comment
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +81,13 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
 
         # Notify Jira before planning starts
         if is_revision:
-            await jira.add_comment(
-                ticket_key,
+            await post_status_comment(
+                jira, ticket_key,
                 "Revising the plan based on your feedback — this will take a few minutes.",
             )
         else:
-            await jira.add_comment(
-                ticket_key,
+            await post_status_comment(
+                jira, ticket_key,
                 "Starting implementation plan generation — reviewing ticket context and drafting the plan. This will take a few minutes.",
             )
 
