@@ -79,17 +79,18 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
         comments = await jira.get_comments(ticket_key)
         comment_text = "\n\n".join(c.body for c in comments if c.body)
 
-        # Notify Jira before planning starts
-        if is_revision:
-            await post_status_comment(
-                jira, ticket_key,
-                "Revising the plan based on your feedback — this will take a few minutes.",
-            )
-        else:
-            await post_status_comment(
-                jira, ticket_key,
-                "Starting implementation plan generation — reviewing ticket context and drafting the plan. This will take a few minutes.",
-            )
+        # Notify Jira before planning starts (skip on internal retries)
+        if retry_count == 0:
+            if is_revision:
+                await post_status_comment(
+                    jira, ticket_key,
+                    "Revising the plan based on your feedback — this will take a few minutes.",
+                )
+            else:
+                await post_status_comment(
+                    jira, ticket_key,
+                    "Starting implementation plan generation — reviewing ticket context and drafting the plan. This will take a few minutes.",
+                )
 
         # 1. Load project's known repos. Do not pick the first repo as a fallback:
         # task takeover planning must choose a repo from the ticket context and
