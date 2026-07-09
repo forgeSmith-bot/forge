@@ -15,7 +15,7 @@ If you find a repo-local review skill or instruction that tells you to fix issue
 
 ## Step 1 - Gather Review Context
 
-1. Inspect repo-local guidance when present: `AGENTS.md`, `CLAUDE.md`, `.claude/`, `README.md`, `CONTRIBUTING.md`, Makefile targets, and any repo-local skills or agent instructions.
+1. Inspect repo-local guidance when present: `AGENTS.md`, `.agents/`, `CLAUDE.md`, `.claude/`, `README.md`, `CONTRIBUTING.md`, Makefile targets, and any repo-local skills or agent instructions.
 2. Use relevant repo-local review skills and checklists if they exist.
 3. Inspect the changed files and diff. Prefer `git diff origin/main...HEAD --no-color` when available, and fall back to the diff supplied in the task prompt.
 
