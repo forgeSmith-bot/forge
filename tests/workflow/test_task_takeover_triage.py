@@ -70,7 +70,7 @@ async def test_complete_ticket_passes_triage(
     assert mock_jira.add_comment.call_count == 2
     comments = [call.args[1] for call in mock_jira.add_comment.call_args_list]
     assert any("checking ticket completeness" in c for c in comments)
-    assert any("enough information to proceed" in c for c in comments)
+    assert any("Starting plan generation" in c for c in comments)
 
 
 @pytest.mark.asyncio
