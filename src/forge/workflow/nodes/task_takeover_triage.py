@@ -104,12 +104,11 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
                 await jira.add_labels(ticket_key, [f"repo:{current_repo}"])
 
             pass_msg = (
-                "Thanks for the update — ticket now has enough information to proceed. "
-                "Starting plan generation — results will be posted here."
+                "Thanks for the update — ticket now has enough information to proceed."
                 if is_resume
-                else "Ticket has enough information to proceed. Starting plan generation — results will be posted here."
+                else "Ticket has enough information to proceed."
             )
-            await post_status_comment(jira,ticket_key, pass_msg)
+            await post_status_comment(jira, ticket_key, pass_msg)
             return cast(
                 TaskTakeoverState,
                 update_state_timestamp(
