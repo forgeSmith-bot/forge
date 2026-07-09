@@ -146,6 +146,12 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
         # 4. Post the plan to Jira
         truncated_comment = _truncate_plan_comment(new_plan)
         await jira.add_comment(ticket_key, truncated_comment)
+
+        # Clear stale repo labels before adding the new ones (matters on revision)
+        existing_labels = await jira.get_labels(ticket_key)
+        stale_repo_labels = [lbl for lbl in existing_labels if lbl.startswith("repo:")]
+        if stale_repo_labels:
+            await jira.remove_labels(ticket_key, stale_repo_labels)
         await jira.add_labels(ticket_key, _repo_labels(plan_repos))
         await jira.set_workflow_label(ticket_key, ForgeLabel.PLAN_PENDING)
 
