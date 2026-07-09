@@ -7,7 +7,6 @@ from typing import Any
 
 from forge.config import get_settings
 from forge.integrations.jira.client import JiraClient
-from forge.workflow.feature.state import FeatureState as WorkflowState
 from forge.workflow.utils import update_state_timestamp
 from forge.workflow.utils.jira_status import (
     post_status_comment,
@@ -17,6 +16,8 @@ from forge.workflow.utils.jira_status import (
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.guardrails import GuardrailsLoader
 from forge.workspace.manager import Workspace, WorkspaceManager
+
+WorkflowState = dict[str, Any]
 
 logger = logging.getLogger(__name__)
 

@@ -62,7 +62,8 @@ class TestTaskTakeoverGraphStructure:
             "setup_workspace",
             "execute_task_changes",
             "run_qualitative_review",
-            "create_task_takeover_pr",
+            "create_pr",
+            "teardown_workspace",
             "wait_for_ci_gate",
             "ci_evaluator",
             "attempt_ci_fix",
@@ -89,7 +90,8 @@ class TestPathTransitions:
             ("setup_workspace", "setup_workspace"),
             ("execute_task_changes", "execute_task_changes"),
             ("qualitative_review", "run_qualitative_review"),
-            ("create_task_takeover_pr", "create_task_takeover_pr"),
+            ("create_pr", "create_pr"),
+            ("teardown_workspace", "teardown_workspace"),
             ("wait_for_ci_gate", "wait_for_ci_gate"),
             ("ci_evaluator", "ci_evaluator"),
             ("attempt_ci_fix", "ci_evaluator"),
@@ -165,7 +167,7 @@ class TestQualitativeReviewRouting:
             review_verdict="adequate",
             qualitative_review_retry_count=0,
         )
-        assert _route_after_qualitative_review(state) == "create_task_takeover_pr"
+        assert _route_after_qualitative_review(state) == "create_pr"
 
     def test_route_after_qualitative_review_failed_under_limit(self) -> None:
         """If review is failed or incomplete and under the limit, route back to execute_task_changes."""
@@ -187,7 +189,7 @@ class TestQualitativeReviewRouting:
             qualitative_review_retry_count=2,
         )
         # retry_count of 2 is at/above the limit of 2, so stop retrying but keep Jira silent.
-        assert _route_after_qualitative_review(state) == "create_task_takeover_pr"
+        assert _route_after_qualitative_review(state) == "create_pr"
 
 
 class TestPostPrRouting:

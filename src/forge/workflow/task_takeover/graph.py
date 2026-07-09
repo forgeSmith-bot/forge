@@ -15,7 +15,7 @@ from forge.workflow.gates.task_plan_approval import (
 from forge.workflow.nodes import (
     answer_question,
     attempt_ci_fix,
-    create_task_takeover_pr,
+    create_pull_request,
     escalate_to_blocked,
     evaluate_ci_status,
     execute_task_changes,
@@ -28,6 +28,7 @@ from forge.workflow.nodes import (
     route_triage_gate,
     run_qualitative_review,
     setup_workspace,
+    teardown_and_route,
     triage_gate,
     triage_task,
     wait_for_ci_gate,
@@ -79,8 +80,10 @@ def route_entry(state: TaskTakeoverState) -> str:
             return "execute_task_changes"
         elif current_node == "qualitative_review":
             return "run_qualitative_review"
-        elif current_node == "create_task_takeover_pr":
-            return "create_task_takeover_pr"
+        elif current_node == "create_pr":
+            return "create_pr"
+        elif current_node == "teardown_workspace":
+            return "teardown_workspace"
         elif current_node == "escalate_blocked":
             return "escalate_blocked"
         else:
@@ -127,7 +130,7 @@ def _route_after_answer(state: TaskTakeoverState) -> str:
 def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
     """Route after run_qualitative_review considering qualitative verdict and retry count.
 
-    If the review is adequate (success), proceed to create_task_takeover_pr.
+    If the review is adequate (success), proceed to create_pr.
     If the review is failed or incomplete:
       - Check if we've reached the configured retry limit.
       - If limit reached: proceed to PR creation with the failed-review state retained.
@@ -137,7 +140,7 @@ def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
     retry_count = state.get("qualitative_review_retry_count", 0)
 
     if verdict == "adequate":
-        return "create_task_takeover_pr"
+        return "create_pr"
 
     limit = QUALITATIVE_REVIEW_MAX_ATTEMPTS
 
@@ -146,13 +149,32 @@ def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
             f"Qualitative review cap ({limit}) reached on task takeover workflow, "
             "proceeding to PR creation with review state retained"
         )
-        return "create_task_takeover_pr"
+        return "create_pr"
 
     logger.info(
         f"Qualitative review verdict is {verdict!r}, retry attempt {retry_count}/{limit}, "
         "routing back to execute_task_changes"
     )
     return "execute_task_changes"
+
+
+def _route_after_pr_creation(state: TaskTakeoverState) -> str:
+    """Route after PR creation: teardown on success, escalate on failure."""
+    last_error = state.get("last_error")
+    pr_urls = state.get("pr_urls", [])
+    if last_error and not pr_urls:
+        return "escalate_blocked"
+    return "teardown_workspace"
+
+
+def _route_after_teardown(state: TaskTakeoverState) -> str:
+    """Route after teardown: next repo or wait for CI."""
+    repos_to_process = state.get("repos_to_process", [])
+    repos_completed = state.get("repos_completed", [])
+    remaining = [r for r in repos_to_process if r not in repos_completed]
+    if remaining:
+        return "setup_workspace"
+    return "wait_for_ci_gate"
 
 
 def _route_ci_evaluation(state: TaskTakeoverState) -> str:
@@ -209,7 +231,8 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
     graph.add_node("setup_workspace", setup_workspace)
     graph.add_node("execute_task_changes", execute_task_changes)
     graph.add_node("run_qualitative_review", run_qualitative_review)
-    graph.add_node("create_task_takeover_pr", create_task_takeover_pr)
+    graph.add_node("create_pr", create_pull_request)
+    graph.add_node("teardown_workspace", teardown_and_route)
     graph.add_node("wait_for_ci_gate", wait_for_ci_gate)
     graph.add_node("ci_evaluator", evaluate_ci_status)
     graph.add_node("attempt_ci_fix", attempt_ci_fix)
@@ -233,7 +256,8 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
             "setup_workspace": "setup_workspace",
             "execute_task_changes": "execute_task_changes",
             "run_qualitative_review": "run_qualitative_review",
-            "create_task_takeover_pr": "create_task_takeover_pr",
+            "create_pr": "create_pr",
+            "teardown_workspace": "teardown_workspace",
             "wait_for_ci_gate": "wait_for_ci_gate",
             "ci_evaluator": "ci_evaluator",
             "attempt_ci_fix": "ci_evaluator",
@@ -293,18 +317,24 @@ def build_task_takeover_graph() -> StateGraph[TaskTakeoverState, Any, Any]:
         _route_after_qualitative_review,
         {
             "execute_task_changes": "execute_task_changes",
-            "create_task_takeover_pr": "create_task_takeover_pr",
+            "create_pr": "create_pr",
             "escalate_blocked": "escalate_blocked",
         },
     )
     graph.add_conditional_edges(
-        "create_task_takeover_pr",
-        lambda s: s.get("current_node", "wait_for_ci_gate"),
+        "create_pr",
+        _route_after_pr_creation,
+        {
+            "teardown_workspace": "teardown_workspace",
+            "escalate_blocked": "escalate_blocked",
+        },
+    )
+    graph.add_conditional_edges(
+        "teardown_workspace",
+        _route_after_teardown,
         {
             "setup_workspace": "setup_workspace",
             "wait_for_ci_gate": "wait_for_ci_gate",
-            "create_task_takeover_pr": "create_task_takeover_pr",
-            "escalate_blocked": "escalate_blocked",
         },
     )
     graph.add_conditional_edges(

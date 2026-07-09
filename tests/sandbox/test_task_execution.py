@@ -11,7 +11,6 @@ import pytest
 from forge.models.workflow import TicketType
 from forge.sandbox.runner import ContainerConfig, ContainerRunner
 from forge.workflow.nodes.task_takeover_execution import execute_task_changes
-from forge.workflow.nodes.task_takeover_pr import cleanup_podman_containers
 from forge.workflow.nodes.workspace_setup import teardown_workspace
 
 
@@ -260,58 +259,6 @@ class TestTaskExecutionSandbox:
             assert any(
                 "Task takeover implementation succeeded" in msg for msg in comment_calls_updated
             )
-
-    @pytest.mark.asyncio
-    @patch("asyncio.create_subprocess_exec")
-    async def test_cleanup_podman_containers_lifecycle(self, mock_create_proc: AsyncMock) -> None:
-        """Test cleanup_podman_containers finds, stops, and removes targeted containers securely."""
-        # Arrange
-        mock_ps_proc = AsyncMock()
-        mock_ps_proc.communicate = AsyncMock(return_value=(b"forge-TASK-123-abc\n", b""))
-
-        mock_stop_proc = AsyncMock()
-        mock_stop_proc.wait = AsyncMock()
-
-        mock_rm_proc = AsyncMock()
-        mock_rm_proc.wait = AsyncMock()
-
-        def side_effect(*args: Any, **_kwargs: Any) -> AsyncMock:
-            if args[1] == "ps":
-                return mock_ps_proc
-            elif args[1] == "stop":
-                return mock_stop_proc
-            elif args[1] == "rm":
-                return mock_rm_proc
-            return AsyncMock()
-
-        mock_create_proc.side_effect = side_effect
-
-        # Act
-        await cleanup_podman_containers("TASK-123")
-
-        # Assert
-        # Check that we queried the containers
-        assert mock_create_proc.call_count >= 3
-        first_call_args = mock_create_proc.call_args_list[0][0]
-        assert first_call_args[0] == "podman"
-        assert first_call_args[1] == "ps"
-        assert "--filter" in first_call_args
-        assert "name=forge-TASK-123-" in first_call_args
-
-        # Check that stop and rm were called on the returned container name
-        stop_called = False
-        rm_called = False
-        for call in mock_create_proc.call_args_list:
-            args = call[0]
-            if "stop" in args:
-                stop_called = True
-                assert "forge-TASK-123-abc" in args
-            if "rm" in args:
-                rm_called = True
-                assert "forge-TASK-123-abc" in args
-
-        assert stop_called is True
-        assert rm_called is True
 
     @pytest.mark.asyncio
     @patch("forge.workflow.nodes.workspace_setup.get_workspace_manager")

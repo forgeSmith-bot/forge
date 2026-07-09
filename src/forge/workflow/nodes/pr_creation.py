@@ -1,8 +1,10 @@
 """PR creation node for opening pull requests."""
 
+import contextlib
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from forge.config import get_settings
 from forge.integrations.agents import ForgeAgent
@@ -11,13 +13,14 @@ from forge.integrations.jira.client import JiraClient
 from forge.models.workflow import ForgeLabel, TicketType
 from forge.orchestrator.checkpointer import set_pr_ticket_index
 from forge.prompts import load_prompt
-from forge.workflow.feature.state import FeatureState as WorkflowState
 from forge.workflow.nodes.code_review import sync_pr_description
 from forge.workflow.nodes.post_merge_summary import _extract_impact
 from forge.workflow.utils import update_state_timestamp
 from forge.workflow.utils.jira_status import post_status_comment
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.manager import Workspace
+
+WorkflowState = dict[str, Any]
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +155,9 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
     current_repo = state.get("current_repo", "")
     implemented_tasks = state.get("implemented_tasks", [])
 
+    if not implemented_tasks:
+        implemented_tasks = [state.get("current_task_key") or ticket_key]
+
     if not workspace_path:
         logger.error(f"No workspace for PR creation on {ticket_key}")
         return {
@@ -159,16 +165,6 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
             "last_error": "Workspace not available",
             "current_node": "create_pr",
         }
-
-    if not implemented_tasks:
-        logger.warning(f"No tasks implemented for {ticket_key}")
-        return update_state_timestamp(
-            {
-                **state,
-                "current_node": "teardown_workspace",
-                "last_error": None,
-            }
-        )
 
     logger.info(f"Creating PR for {ticket_key} ({len(implemented_tasks)} tasks)")
 
@@ -283,6 +279,10 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
                 "GitHub event routing will fall back to name-based extraction",
                 exc_info=True,
             )
+
+        # Transition Jira ticket to "In Review"
+        with contextlib.suppress(Exception):
+            await jira.transition_issue(ticket_key, "In Review")
 
         # Sync description to catch any inaccuracies from local_review commits
         await sync_pr_description(
@@ -573,13 +573,22 @@ async def teardown_and_route(state: WorkflowState) -> WorkflowState:
     remaining = [r for r in repos_to_process if r not in repos_completed]
 
     if remaining:
-        # Move to next repo
+        # Move to next repo — reset per-repo state
         return update_state_timestamp(
             {
                 **state,
                 "repos_completed": repos_completed,
                 "current_repo": remaining[0],
                 "implemented_tasks": [],
+                "current_task_key": None,
+                "fork_owner": None,
+                "fork_repo": None,
+                "current_pr_url": None,
+                "current_pr_number": None,
+                "review_verdict": None,
+                "review_feedback": None,
+                "qualitative_review_retry_count": 0,
+                "qualitative_review_failed": False,
                 "current_node": "setup_workspace",
             }
         )

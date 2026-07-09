@@ -70,7 +70,6 @@ from forge.workflow.nodes.task_router import (
 )
 from forge.workflow.nodes.task_takeover_execution import execute_task_changes
 from forge.workflow.nodes.task_takeover_planning import generate_plan
-from forge.workflow.nodes.task_takeover_pr import create_task_takeover_pr
 from forge.workflow.nodes.task_takeover_review import run_qualitative_review
 from forge.workflow.nodes.task_takeover_triage import triage_task
 from forge.workflow.nodes.triage import route_triage_gate, triage_check, triage_gate
@@ -139,8 +138,6 @@ __all__ = [
     "generate_plan",
     # Task takeover workflow — execution
     "execute_task_changes",
-    # Task takeover workflow — PR creation
-    "create_task_takeover_pr",
     # Task takeover workflow — review
     "run_qualitative_review",
     # Bug workflow — RCA analysis

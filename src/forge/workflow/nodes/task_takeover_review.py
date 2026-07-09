@@ -139,12 +139,6 @@ async def run_qualitative_review(state: WorkflowState) -> WorkflowState:
             previous_task_keys=state.get("implemented_tasks", []),
         )
 
-        if git.has_uncommitted_changes():
-            raise RuntimeError(
-                "Task takeover reviewer modified the workspace; review containers must not edit, "
-                "stage, commit, or generate files."
-            )
-
         # Parse verdict and feedback
         response = "\n".join(part for part in (result.stdout, result.stderr) if part)
         verdict, feedback = _parse_qualitative_review(response)

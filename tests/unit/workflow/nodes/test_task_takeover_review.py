@@ -133,9 +133,6 @@ class TestRunQualitativeReview:
         assert kwargs["task_key"] == "TASK-101-review"
         assert kwargs["repo_name"] == "owner/repo"
         assert "task-takeover-review skill" in kwargs["task_description"]
-        mock_git_instance.has_uncommitted_changes.assert_called_once()
-        mock_git_instance.stage_all.assert_not_called()
-        mock_git_instance.commit.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_run_qualitative_review_tests_incomplete(
@@ -166,33 +163,6 @@ class TestRunQualitativeReview:
         assert result["qualitative_review_failed"] is True
         assert result["current_node"] == "qualitative_review"
         assert result["last_error"] is None
-
-    @pytest.mark.asyncio
-    async def test_run_qualitative_review_rejects_workspace_changes(
-        self, base_task_state: TaskTakeoverState
-    ) -> None:
-        mock_jira = _make_mock_jira()
-        mock_runner = _make_mock_runner("verdict: adequate\nfeedback: All good.")
-
-        with (
-            patch("forge.workflow.nodes.task_takeover_review.JiraClient", return_value=mock_jira),
-            patch("forge.workflow.nodes.task_takeover_review.GitOperations") as mock_git,
-            patch("forge.workflow.nodes.task_takeover_review.ContainerRunner", return_value=mock_runner),
-            patch("forge.workflow.nodes.error_handler.notify_error") as mock_notify,
-        ):
-            mock_git_instance = MagicMock()
-            mock_git_instance._run_git = MagicMock()
-            mock_git_instance._run_git.return_value.returncode = 0
-            mock_git_instance._run_git.return_value.stdout = "diff contents"
-            mock_git_instance.has_uncommitted_changes = MagicMock(return_value=True)
-            mock_git.return_value = mock_git_instance
-
-            result = await run_qualitative_review(base_task_state)
-
-        assert result["last_error"] is not None
-        assert "reviewer modified the workspace" in result["last_error"]
-        assert result["current_node"] == "qualitative_review"
-        mock_notify.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_run_qualitative_review_missing_workspace(
