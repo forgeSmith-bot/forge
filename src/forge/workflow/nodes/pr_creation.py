@@ -173,7 +173,9 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
 
     try:
         # Set up workspace reference
-        branch_name = state.get("context", {}).get("branch_name", "")
+        context = state.get("context", {})
+        branch_name = context.get("branch_name", "")
+        default_branch = context.get("default_branch", "main")
         workspace = Workspace(
             path=Path(workspace_path),
             repo_name=current_repo,
@@ -185,7 +187,7 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
         pr_target = await prepare_pull_request_target(github, git, current_repo)
 
         # Check for merge conflicts before pushing
-        has_conflicts, conflicting_files = await check_merge_conflicts(git, "main")
+        has_conflicts, conflicting_files = await check_merge_conflicts(git, default_branch)
 
         if has_conflicts:
             logger.warning(f"Merge conflicts detected for {ticket_key}: {conflicting_files}")
@@ -234,6 +236,7 @@ async def create_pull_request(state: WorkflowState) -> WorkflowState:
             branch_name=branch_name,
             title=pr_title,
             body=pr_body,
+            base=default_branch,
         )
 
         pr_url = pr_data.get("html_url", "")
@@ -471,8 +474,9 @@ async def _generate_pr_body_with_agent(
 
     try:
         # Get commit log from the branch
+        default_branch = state.get("context", {}).get("default_branch", "main")
         commit_log = git._run_git(
-            "log", "origin/main..HEAD", "--pretty=format:%h %s%n%b", "--no-merges", check=False
+            "log", f"origin/{default_branch}..HEAD", "--pretty=format:%h %s%n%b", "--no-merges", check=False
         ).stdout.strip()
 
         if not commit_log:
