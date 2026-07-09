@@ -68,7 +68,8 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
 
         # Step 1: Post acknowledgement on first execution only (not on resume)
         if not is_resume:
-            await post_status_comment(jira,
+            await post_status_comment(
+                jira,
                 ticket_key,
                 "Received this task/epic — checking ticket completeness before starting planning.",
             )
@@ -109,7 +110,7 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
                 if is_resume
                 else "Ticket has enough information to proceed. Starting plan generation — results will be posted here."
             )
-            await post_status_comment(jira,ticket_key, pass_msg)
+            await post_status_comment(jira, ticket_key, pass_msg)
             return cast(
                 TaskTakeoverState,
                 update_state_timestamp(
@@ -146,7 +147,8 @@ async def triage_task(state: TaskTakeoverState) -> TaskTakeoverState:
             ]
 
         fields_listed = "\n".join(f"- {f}" for f in missing_fields)
-        await post_status_comment(jira,
+        await post_status_comment(
+            jira,
             ticket_key,
             "To proceed with planning, please reply with a comment starting "
             f"with `!` and provide the following information:\n\n{fields_listed}",

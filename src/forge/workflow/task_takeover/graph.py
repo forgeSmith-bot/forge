@@ -147,9 +147,7 @@ def _route_after_qualitative_review(state: TaskTakeoverState) -> str:
     # Unrecoverable errors (no workspace, infrastructure failure) should escalate
     # instead of looping — retrying without a workspace will never succeed.
     if last_error and not verdict:
-        logger.warning(
-            f"Qualitative review hit an error without producing a verdict: {last_error}"
-        )
+        logger.warning(f"Qualitative review hit an error without producing a verdict: {last_error}")
         return "escalate_blocked"
 
     limit = QUALITATIVE_REVIEW_MAX_ATTEMPTS

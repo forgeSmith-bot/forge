@@ -83,12 +83,14 @@ async def generate_plan(state: TaskTakeoverState) -> TaskTakeoverState:
         if retry_count == 0:
             if is_revision:
                 await post_status_comment(
-                    jira, ticket_key,
+                    jira,
+                    ticket_key,
                     "Revising the plan based on your feedback — this will take a few minutes.",
                 )
             else:
                 await post_status_comment(
-                    jira, ticket_key,
+                    jira,
+                    ticket_key,
                     "Starting implementation plan generation — reviewing ticket context and drafting the plan. This will take a few minutes.",
                 )
 

@@ -476,7 +476,11 @@ async def _generate_pr_body_with_agent(
         # Get commit log from the branch
         default_branch = state.get("context", {}).get("default_branch", "main")
         commit_log = git._run_git(
-            "log", f"origin/{default_branch}..HEAD", "--pretty=format:%h %s%n%b", "--no-merges", check=False
+            "log",
+            f"origin/{default_branch}..HEAD",
+            "--pretty=format:%h %s%n%b",
+            "--no-merges",
+            check=False,
         ).stdout.strip()
 
         if not commit_log:
