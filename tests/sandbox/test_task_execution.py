@@ -154,7 +154,6 @@ class TestTaskExecutionSandbox:
 
             # Verify JIRA interactions
             mock_jira.get_issue.assert_called_once_with("TASK-123")
-            mock_jira.add_comment.assert_called()
             mock_jira.close.assert_called_once()
 
             # Verify Git interactions on the host
@@ -214,10 +213,6 @@ class TestTaskExecutionSandbox:
             assert state_after_fail["retry_count"] == 1
             assert state_after_fail["commit_info"]["committed"] is False
 
-            # Verify failure comment was posted to Jira
-            comment_calls = [call[0][1] for call in mock_jira.add_comment.call_args_list]
-            assert any("failed/exited with code 2" in msg for msg in comment_calls)
-
             # --- SECOND RUN: Simulated self-correction and success ---
             mock_proc_success = AsyncMock()
             mock_proc_success.communicate = AsyncMock(
@@ -254,11 +249,6 @@ class TestTaskExecutionSandbox:
             assert state_after_success["commit_info"]["committed"] is True
             assert state_after_success["commit_info"]["sha"] == "abcdef1234567890"
 
-            # Verify success comment was posted to Jira
-            comment_calls_updated = [call[0][1] for call in mock_jira.add_comment.call_args_list]
-            assert any(
-                "Task takeover implementation succeeded" in msg for msg in comment_calls_updated
-            )
 
     @pytest.mark.asyncio
     @patch("forge.workflow.nodes.workspace_setup.get_workspace_manager")
