@@ -127,6 +127,8 @@ class TestJiraConfigParser:
                 {"name": "owner/repo3", "draft_pr": True},
                 {"name": "owner/repo4", "draft": False},
                 {"name": "owner/repo5"},
+                {"name": "owner/repo6", "draft": "false"},
+                {"name": "owner/repo7", "draft_pr": 1},
             ]
         )
 
@@ -147,6 +149,10 @@ class TestJiraConfigParser:
 
         # Dict without draft keys: should be False
         assert await mock_jira_client.is_repo_draft("PROJ", "owner/repo5") is False
+
+        # Non-boolean values should not enable draft PRs
+        assert await mock_jira_client.is_repo_draft("PROJ", "owner/repo6") is False
+        assert await mock_jira_client.is_repo_draft("PROJ", "owner/repo7") is False
 
         # Non-existent repository: should be False
         assert await mock_jira_client.is_repo_draft("PROJ", "owner/nonexistent") is False
@@ -260,6 +266,12 @@ class TestPRCreationNodeDraft:
             patch(
                 "forge.workflow.nodes.pr_creation.check_merge_conflicts", return_value=(False, [])
             ),
+            patch(
+                "forge.workflow.nodes.pr_creation._generate_pr_body_with_agent",
+                new_callable=AsyncMock,
+                return_value="Generated PR body",
+            ),
+            patch("forge.workflow.nodes.pr_creation.set_pr_ticket_index", new_callable=AsyncMock),
             patch("forge.workflow.nodes.pr_creation.sync_pr_description", new_callable=AsyncMock),
         ):
             await create_pull_request(state)
@@ -304,6 +316,12 @@ class TestPRCreationNodeDraft:
             patch(
                 "forge.workflow.nodes.pr_creation.check_merge_conflicts", return_value=(False, [])
             ),
+            patch(
+                "forge.workflow.nodes.pr_creation._generate_pr_body_with_agent",
+                new_callable=AsyncMock,
+                return_value="Generated PR body",
+            ),
+            patch("forge.workflow.nodes.pr_creation.set_pr_ticket_index", new_callable=AsyncMock),
             patch("forge.workflow.nodes.pr_creation.sync_pr_description", new_callable=AsyncMock),
         ):
             await create_pull_request(state)

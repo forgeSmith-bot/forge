@@ -1020,7 +1020,7 @@ class JiraClient:
                     draft = r.get("draft")
                     if draft is None:
                         draft = r.get("draft_pr")
-                    return bool(draft)
+                    return draft is True
 
         return False
 
