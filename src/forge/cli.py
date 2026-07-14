@@ -673,7 +673,20 @@ async def cmd_health(args: argparse.Namespace) -> int:
 
     from forge.orchestrator.checkpointer import get_redis_client
 
-    settings = get_settings()
+    try:
+        settings = get_settings()
+    except Exception as e:
+        error_msg = str(e)
+        if getattr(args, "json", False):
+            data = {
+                "status": "unhealthy",
+                "error": "Configuration error",
+                "details": error_msg,
+            }
+            sys.stdout.write(json.dumps(data) + "\n")
+        else:
+            print(f"Error: Configuration loading failed: {error_msg}", file=sys.stderr)
+        return 1
 
     # 1. Gather status details
     redis_status = "connected"
@@ -706,7 +719,16 @@ async def cmd_health(args: argparse.Namespace) -> int:
 
     provider = settings.detect_model_provider(settings.llm_model)
     if provider == "google":
-        llm_backend = "google-genai"
+        # Gemini is supported through Vertex AI, so a valid Gemini-on-Vertex configuration
+        # should be classified correctly under Vertex settings (if Vertex configuration is present),
+        # otherwise we classify it as direct Google GenAI.
+        # Direct Google GenAI (using google_api_key) is currently not supported at runtime by the agent.
+        if settings.anthropic_vertex_project_id and not settings.google_api_key.get_secret_value():
+            llm_backend = "vertex-ai"
+            vertex_project = settings.anthropic_vertex_project_id or None
+            vertex_location = settings.anthropic_vertex_region or None
+        else:
+            llm_backend = "google-genai"
     elif provider == "anthropic":
         if settings.anthropic_api_key.get_secret_value():
             llm_backend = "anthropic"
@@ -721,8 +743,8 @@ async def cmd_health(args: argparse.Namespace) -> int:
     elif (
         llm_backend == "vertex-ai"
         and not vertex_project
-        or llm_backend == "google-genai"
-        and not settings.google_api_key.get_secret_value()
+        or llm_backend
+        == "google-genai"  # google-genai is direct Google GenAI using google_api_key, which is not supported at runtime by the agent, so should not report "healthy"
         or llm_backend == "anthropic"
         and not settings.anthropic_api_key.get_secret_value()
         or llm_backend == "unknown"

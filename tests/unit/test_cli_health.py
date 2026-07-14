@@ -84,7 +84,7 @@ async def test_health_missing_vertex_project():
 
 @pytest.mark.asyncio
 async def test_health_gemini_api():
-    """Verify that Google GenAI / Gemini configuration works and outputs healthy status."""
+    """Verify that Google GenAI / Gemini configuration outputs warning status since direct Google GenAI is not supported at runtime yet."""
     test_settings = Settings(
         redis_url="redis://localhost:6379/0",
         jira_base_url="https://test.atlassian.net",
@@ -111,7 +111,7 @@ async def test_health_gemini_api():
         written = "".join(call.args[0] for call in mock_stdout_write.call_args_list)
         data = json.loads(written)
 
-        assert data["status"] == "healthy"
+        assert data["status"] == "warning"
         assert data["llm"]["backend"] == "google-genai"
 
 
