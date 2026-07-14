@@ -3,8 +3,9 @@ import re
 
 def test_docs_homepage_structure_and_links():
     """Verify the docs/index.md structure, content, and the presence of critical workflow links."""
-    index_path = "/workspace/docs/index.md"
-    assert os.path.exists(index_path), "docs/index.md does not exist"
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    index_path = os.path.join(base_dir, "docs", "index.md")
+    assert os.path.exists(index_path), f"docs/index.md does not exist at {index_path}"
     
     with open(index_path, "r", encoding="utf-8") as f:
         content = f.read()
@@ -27,5 +28,5 @@ def test_docs_homepage_structure_and_links():
         if not link.startswith("http") and link.endswith(".md"):
             # Clean anchors
             link_clean = link.split("#")[0]
-            target_path = os.path.join("/workspace/docs", link_clean)
+            target_path = os.path.join(base_dir, "docs", link_clean)
             assert os.path.exists(target_path), f"Linked file does not exist: {target_path}"
