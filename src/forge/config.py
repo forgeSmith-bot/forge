@@ -162,6 +162,11 @@ class Settings(BaseSettings):
         default="us-east5",
         description="Google Cloud region for Vertex AI (e.g., us-east5)",
     )
+    # Option 3: Google GenAI API
+    google_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Google API key for Gemini models",
+    )
     # Model configuration (supports Claude and Gemini on Vertex AI)
     # Claude models: claude-opus-4-5@20251101, claude-sonnet-4-5@20250929, etc.
     # Gemini models: gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-preview, etc.

@@ -662,56 +662,128 @@ async def cmd_project_setup(args: argparse.Namespace) -> int:
         await jira.close()
 
 
-async def cmd_health(_args: argparse.Namespace) -> int:
-    """Check system health."""
+async def cmd_health(args: argparse.Namespace) -> int:
+    """Check system health.
+
+    Examples:
+      forge health
+      forge health --json
+    """
+    import json
+
     from forge.orchestrator.checkpointer import get_redis_client
 
-    print("Checking system health...\n")
+    settings = get_settings()
 
-    # Check settings
-    try:
-        settings = get_settings()
-        print("[OK] Configuration loaded")
-        print(f"     Jira: {settings.jira_base_url}")
-        print(f"     Use labels: {settings.jira_use_labels}")
-        print(f"     Store in comments: {settings.jira_store_in_comments}")
-    except Exception as e:
-        print(f"[FAIL] Configuration: {e}")
-        return 1
-
-    # Check Redis
+    # 1. Gather status details
+    redis_status = "connected"
+    redis_error = None
     try:
         redis_client = await get_redis_client()
         await redis_client.ping()
-        print(f"[OK] Redis connected: {settings.redis_url}")
     except Exception as e:
-        print(f"[FAIL] Redis: {e}")
-        return 1
+        redis_status = "disconnected"
+        redis_error = str(e)
 
-    # Check Jira (if token configured)
+    jira_status = "skipped"
+    jira_error = None
     if settings.jira_api_token.get_secret_value() != "your-jira-api-token":
         try:
             from forge.integrations.jira.client import JiraClient
 
             jira = JiraClient()
-            # Try to get projects (simple API call)
             await jira.close()
-            print("[OK] Jira credentials configured")
+            jira_status = "configured"
         except Exception as e:
-            print(f"[WARN] Jira: {e}")
-    else:
-        print("[SKIP] Jira: API token not configured")
+            jira_status = "failed"
+            jira_error = str(e)
 
-    # Check Anthropic/Vertex
-    if settings.use_vertex_ai:
-        print(f"[OK] Using Vertex AI: {settings.anthropic_vertex_project_id}")
-    elif settings.anthropic_api_key.get_secret_value():
-        print("[OK] Using direct Anthropic API")
-    else:
-        print("[WARN] No Claude API configured")
+    # Resolve LLM backend
+    llm_backend = "unknown"
+    model = settings.llm_model
+    vertex_project = None
+    vertex_location = None
 
-    print("\nHealth check complete!")
-    return 0
+    provider = settings.detect_model_provider(settings.llm_model)
+    if provider == "google":
+        llm_backend = "google-genai"
+    elif provider == "anthropic":
+        if settings.anthropic_api_key.get_secret_value():
+            llm_backend = "anthropic"
+        else:
+            llm_backend = "vertex-ai"
+            vertex_project = settings.anthropic_vertex_project_id or None
+            vertex_location = settings.anthropic_vertex_region or None
+
+    # Map status
+    if redis_status == "disconnected":
+        overall_status = "unhealthy"
+    elif (
+        llm_backend == "vertex-ai"
+        and not vertex_project
+        or llm_backend == "google-genai"
+        and not settings.google_api_key.get_secret_value()
+        or llm_backend == "anthropic"
+        and not settings.anthropic_api_key.get_secret_value()
+        or llm_backend == "unknown"
+    ):
+        overall_status = "warning"
+    else:
+        overall_status = "healthy"
+
+    # 2. Render output
+    if getattr(args, "json", False):
+        data = {
+            "status": overall_status,
+            "redis": {
+                "status": redis_status,
+                "error": redis_error,
+            },
+            "jira": {
+                "status": jira_status,
+                "error": jira_error,
+            },
+            "llm": {
+                "backend": llm_backend,
+                "model": model,
+                "vertex_project": vertex_project,
+                "vertex_location": vertex_location,
+            },
+        }
+        sys.stdout.write(json.dumps(data) + "\n")
+        return 1 if overall_status == "unhealthy" else 0
+
+    else:
+        print("Checking system health...\n")
+        print("[OK] Configuration loaded")
+        print(f"     Jira: {settings.jira_base_url}")
+        print(f"     Use labels: {settings.jira_use_labels}")
+        print(f"     Store in comments: {settings.jira_store_in_comments}")
+
+        if redis_status == "connected":
+            print(f"[OK] Redis connected: {settings.redis_url}")
+        else:
+            print(f"[FAIL] Redis: {redis_error}")
+            return 1
+
+        if jira_status == "configured":
+            print("[OK] Jira credentials configured")
+        elif jira_status == "failed":
+            print(f"[WARN] Jira: {jira_error}")
+        else:
+            print("[SKIP] Jira: API token not configured")
+
+        if llm_backend == "vertex-ai":
+            print(f"[OK] Using Vertex AI: {vertex_project}")
+        elif llm_backend == "anthropic":
+            print("[OK] Using direct Anthropic API")
+        elif llm_backend == "google-genai":
+            print("[OK] Using Google GenAI API")
+        else:
+            print("[WARN] No Claude API configured")
+
+        print("\nHealth check complete!")
+        return 0
 
 
 def main() -> int:
@@ -797,9 +869,14 @@ def main() -> int:
     clear_parser.add_argument("ticket", help="Jira ticket key")
 
     # health command
-    subparsers.add_parser(
+    health_parser = subparsers.add_parser(
         "health",
         help="Check system health",
+    )
+    health_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output health check results as a single JSON object",
     )
 
     # list command
