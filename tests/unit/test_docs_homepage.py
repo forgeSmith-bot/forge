@@ -1,13 +1,14 @@
 import os
 import re
 
-def test_docs_homepage_structure_and_links():
+
+def test_docs_homepage_structure_and_links() -> None:
     """Verify the docs/index.md structure, content, and the presence of critical workflow links."""
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     index_path = os.path.join(base_dir, "docs", "index.md")
     assert os.path.exists(index_path), f"docs/index.md does not exist at {index_path}"
-    
-    with open(index_path, "r", encoding="utf-8") as f:
+
+    with open(index_path, encoding="utf-8") as f:
         content = f.read()
 
     # Verify each workflow is mentioned with its specific emoji and header structure
