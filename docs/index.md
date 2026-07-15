@@ -17,8 +17,8 @@ graph TD
 
     %% Workflow processing paths
     subgraph "2. Automated Planning & Diagnosis"
-        PRD[Generate PRD & Spec]
-        RCA[Generate Root Cause Analysis & Plan]
+        PRD[Generate PRD & Spec<br/>with Epic & Task Decomposition]
+        RCA[Generate Root Cause Analysis<br/>& Option Selection / Fix Plan]
         Takeover[Triage & Task Takeover Planning]
     end
 
