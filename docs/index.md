@@ -10,7 +10,7 @@ Forge supports three distinct, user-facing workflows depending on your ticket ty
 graph TD
     %% Workflow entrypoints
     subgraph "1. Choose Your Workflow"
-        Feature[Jira Epic/Story<br/>Feature Workflow]
+        Feature[Jira Feature/Story<br/>Feature Workflow]
         Bug[Jira Bug<br/>Bug Workflow]
         Task[Jira Task<br/>Task Workflow]
     end
