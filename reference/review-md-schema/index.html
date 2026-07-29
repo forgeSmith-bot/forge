@@ -10,13 +10,9 @@
       
       
       
-        <link rel="canonical" href="https://forge-sdlc.github.io/forge/dev/testing/">
+        <link rel="canonical" href="https://forge-sdlc.github.io/forge/reference/review-md-schema/">
       
       
-        <link rel="prev" href="../setup/">
-      
-      
-        <link rel="next" href="../contributing/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Testing - Forge SDLC Guide</title>
+        <title>review.md Schema - Forge SDLC Guide</title>
       
     
     
@@ -83,7 +79,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#testing" class="md-skip">
+        <a href="#reviewmd-schema" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Testing
+              review.md Schema
             
           </span>
         </div>
@@ -249,12 +245,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../../developer-guide/" class="md-tabs__link">
           
   
@@ -293,7 +287,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/api/" class="md-tabs__link">
+        <a href="../api/" class="md-tabs__link">
           
   
   Reference
@@ -598,31 +592,28 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -639,7 +630,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -689,13 +680,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -704,7 +692,7 @@
         <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
         
           
-          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
             
   
   
@@ -854,7 +842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../setup/" class="md-nav__link">
+      <a href="../../dev/setup/" class="md-nav__link">
         
   
   
@@ -878,36 +866,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Testing
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../dev/testing/" class="md-nav__link">
         
   
   
@@ -922,121 +884,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#running-the-test-suite" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Running the Test Suite
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#linting-and-type-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Linting and Type Checking
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#payload-based-testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Payload-Based Testing
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing-ci-skip-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Testing CI Skip Commands
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#debugging" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Debugging
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Debugging">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#snapshot-and-restore-checkpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Snapshot and Restore Checkpoints
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#inspect-redis-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Inspect Redis State
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#worker-logs" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Worker Logs
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1049,7 +896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../dev/contributing/" class="md-nav__link">
         
   
   
@@ -1275,7 +1122,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -1302,7 +1149,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/config/" class="md-nav__link">
+      <a href="../config/" class="md-nav__link">
         
   
   
@@ -1329,7 +1176,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/proposals/" class="md-nav__link">
+      <a href="../proposals/" class="md-nav__link">
         
   
   
@@ -1397,10 +1244,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#running-the-test-suite" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Running the Test Suite
+        Overview
       </span>
     </span>
   </a>
@@ -1408,55 +1255,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#linting-and-type-checking" class="md-nav__link">
+  <a href="#file-location" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Linting and Type Checking
+        File Location
       </span>
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#payload-based-testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Payload-Based Testing
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing-ci-skip-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Testing CI Skip Commands
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#debugging" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Debugging
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Debugging">
+    <nav class="md-nav" aria-label="File Location">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#snapshot-and-restore-checkpoints" class="md-nav__link">
+  <a href="#naming-convention" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Snapshot and Restore Checkpoints
+        Naming Convention
       </span>
     </span>
   </a>
@@ -1464,21 +1278,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#inspect-redis-state" class="md-nav__link">
+  <a href="#override-precedence" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Inspect Redis State
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#worker-logs" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Worker Logs
+        Override Precedence
       </span>
     </span>
   </a>
@@ -1487,6 +1290,150 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        File Format
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Format">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-frontmatter-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        YAML Frontmatter Schema
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prose-body" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Prose Body
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Edge Cases
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Edge Cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#empty-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Empty File
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontmatter-only-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Frontmatter-Only File
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missing-frontmatter" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Missing Frontmatter
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#malformed-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Malformed YAML
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no-reviewmd-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        No review.md Found
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#review-cycle-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Review Cycle Output
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Validation Summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        See Also
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -1505,7 +1452,7 @@
                 
                   
   
-    <a href="https://github.com/forge-sdlc/forge/edit/main/docs/dev/testing.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/forge-sdlc/forge/edit/main/docs/reference/review-md-schema.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1513,75 +1460,290 @@
   
 
 
-<h1 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h1>
-<h2 id="running-the-test-suite">Running the Test Suite<a class="headerlink" href="#running-the-test-suite" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Fast PR suites</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>test-pr
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Redis-backed component integration tests</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>make<span class="w"> </span>test-integration
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Deterministic end-to-end smoke tests</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>make<span class="w"> </span>test-e2e
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Specific test file</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/unit/test_workflow.py<span class="w"> </span>-v
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># With coverage</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>make<span class="w"> </span>coverage
+<h1 id="reviewmd-schema">review.md Schema<a class="headerlink" href="#reviewmd-schema" title="Permanent link">&para;</a></h1>
+<p>This document specifies the file format and validation rules for <code>review.md</code> files used to configure skill-specific review loops.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>A <code>review.md</code> file configures how an AI reviewer evaluates the output of a skill before proceeding. It specifies retry limits and provides review instructions that guide the reviewer's analysis.</p>
+<h2 id="file-location">File Location<a class="headerlink" href="#file-location" title="Permanent link">&para;</a></h2>
+<h3 id="naming-convention">Naming Convention<a class="headerlink" href="#naming-convention" title="Permanent link">&para;</a></h3>
+<p>The file must be named exactly <code>review.md</code> (lowercase) and placed alongside <code>SKILL.md</code> in a skill directory:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>skills/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── default/
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   └── local-code-review/
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│       ├── SKILL.md          # Skill definition
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│       └── review.md         # Review configuration
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└── myproject/
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    └── local-code-review/
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        ├── SKILL.md          # Project-specific skill override
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        └── review.md         # Project-specific review override
 </code></pre></div>
-<p>Integration tests use <code>FORGE_TEST_REDIS_URL</code> when set and otherwise start a
-pinned Redis Stack testcontainer. CI sets <code>FORGE_REQUIRE_TEST_REDIS=1</code>, so a
-missing infrastructure dependency fails the gate instead of silently skipping it.</p>
-<h2 id="linting-and-type-checking">Linting and Type Checking<a class="headerlink" href="#linting-and-type-checking" title="Permanent link">&para;</a></h2>
-<p>Before submitting a PR, these must all pass:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>lint
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>src/forge/<span class="w">       </span><span class="c1"># type check</span>
+<h3 id="override-precedence">Override Precedence<a class="headerlink" href="#override-precedence" title="Permanent link">&para;</a></h3>
+<p>Review configuration follows the same precedence rules as skills:</p>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 (highest)</td>
+<td><code>skills/{project}/{skill-name}/review.md</code></td>
+<td>Project-specific override</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>skills/default/{skill-name}/review.md</code></td>
+<td>Default configuration</td>
+</tr>
+</tbody>
+</table>
+<p>The project key is extracted from the Jira ticket key and lowercased. For ticket <code>MYPROJECT-123</code>, Forge checks <code>skills/myproject/</code> first.</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Ticket <code>AISOS-456</code> with skill <code>local-code-review</code>:</li>
+<li>Check <code>skills/aisos/local-code-review/review.md</code></li>
+<li>
+<p>Fall back to <code>skills/default/local-code-review/review.md</code></p>
+</li>
+<li>
+<p>If neither path exists, the skill runs <strong>without a reviewer</strong>.</p>
+</li>
+</ul>
+<h2 id="file-format">File Format<a class="headerlink" href="#file-format" title="Permanent link">&para;</a></h2>
+<p>The <code>review.md</code> file uses YAML frontmatter followed by Markdown prose, consistent with <code>SKILL.md</code> files:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>---
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="gu">max_retries: 5</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="gu">---</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="gh"># Review Instructions</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>Verify that the implementation meets all acceptance criteria...
 </code></pre></div>
-<h2 id="payload-based-testing">Payload-Based Testing<a class="headerlink" href="#payload-based-testing" title="Permanent link">&para;</a></h2>
-<p>Test workflow stages without live webhooks using sample payloads from <code>tests/payloads/</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Trigger a Jira issue-created event</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/webhooks/jira<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>-d<span class="w"> </span>@tests/payloads/jira-feature-created.json
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># Trigger a GitHub PR review</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8000/api/v1/webhooks/github<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span>-d<span class="w"> </span>@tests/payloads/github-pr-approved.json
+<h3 id="yaml-frontmatter-schema">YAML Frontmatter Schema<a class="headerlink" href="#yaml-frontmatter-schema" title="Permanent link">&para;</a></h3>
+<p>The frontmatter section is delimited by <code>---</code> markers and contains YAML key-value pairs:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_retries</code></td>
+<td><code>int</code></td>
+<td>No</td>
+<td><code>3</code></td>
+<td>Maximum retry attempts after a REJECTED verdict. Set to <code>0</code> to skip review.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Disabling review:</strong> Set <code>max_retries: 0</code> in the skill's <code>review.md</code> frontmatter, or set the <code>AUTO_REVIEW_MAX_RETRIES=0</code> environment variable to disable review globally for all skills.</p>
+<p><strong>Frontmatter rules:</strong></p>
+<ul>
+<li>The opening <code>---</code> must be the first line of the file (no leading whitespace or blank lines)</li>
+<li>The closing <code>---</code> must appear on its own line</li>
+<li>Unknown fields are silently ignored (forward compatibility)</li>
+<li>Field values must match the expected type; invalid types trigger a warning and use defaults</li>
+</ul>
+<p><strong>Priority for <code>max_retries</code>:</strong></p>
+<ol>
+<li>Frontmatter value (if valid integer)</li>
+<li><code>AUTO_REVIEW_MAX_RETRIES</code> environment variable (if set and valid)</li>
+<li>Built-in default: <code>3</code></li>
+</ol>
+<h3 id="prose-body">Prose Body<a class="headerlink" href="#prose-body" title="Permanent link">&para;</a></h3>
+<p>Everything after the closing <code>---</code> delimiter is treated as reviewer instructions. This Markdown content is passed to the reviewer agent as its system prompt.</p>
+<p><strong>Best practices for instructions:</strong></p>
+<ul>
+<li>Define what constitutes approval vs. rejection</li>
+<li>Specify quality criteria and acceptance thresholds</li>
+<li>Reference any artifacts the reviewer should examine (e.g., <code>.forge/</code> files, test output)</li>
+<li>Keep instructions focused on review criteria, not implementation details</li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>---
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="gu">max_retries: 3</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="gu">---</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="gh"># Code Review Checklist</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Evaluate the implementation against these criteria:
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="gu">## Required (reject if missing)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="k">- [ ]</span> All acceptance criteria from the task are addressed
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="k">- [ ]</span> No obvious security vulnerabilities introduced
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="k">- [ ]</span> Tests cover the new functionality
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="gu">## Recommended (note but don&#39;t reject)</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="k">- [ ]</span> Code follows existing patterns
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="k">- [ ]</span> Documentation updated if needed
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="gu">## Output Format</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>End your review with exactly one of:
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="k">-</span><span class="w"> </span><span class="sb">`APPROVED`</span> — all required criteria pass
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="k">-</span><span class="w"> </span><span class="sb">`REJECTED`</span> — followed by specific feedback for the implementer
 </code></pre></div>
-<p>See the <a href="../../developer-guide/#6-testing-with-payloads">Developer Guide</a> for the full set of payloads and how to trigger specific workflow stages.</p>
-<h2 id="testing-ci-skip-commands">Testing CI Skip Commands<a class="headerlink" href="#testing-ci-skip-commands" title="Permanent link">&para;</a></h2>
-<p>Post a PR comment via the GitHub API:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="s2">&quot;https://api.github.com/repos/your-org/your-repo/issues/123/comments&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: token </span><span class="nv">$GITHUB_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;body&quot;: &quot;/forge skip-gate e2e-openstack&quot;}&#39;</span>
+<h2 id="edge-cases">Edge Cases<a class="headerlink" href="#edge-cases" title="Permanent link">&para;</a></h2>
+<h3 id="empty-file">Empty File<a class="headerlink" href="#empty-file" title="Permanent link">&para;</a></h3>
+<p>A <code>review.md</code> file with zero bytes or only whitespace:</p>
+<ul>
+<li>Reviewer spawns with <strong>no instructions</strong> (empty prompt)</li>
+<li>Uses default <code>max_retries: 3</code> (or env var if set)</li>
+</ul>
+<h3 id="frontmatter-only-file">Frontmatter-Only File<a class="headerlink" href="#frontmatter-only-file" title="Permanent link">&para;</a></h3>
+<p>A file with frontmatter but no prose body:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>---
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="gu">max_retries: 5</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="gu">---</span>
 </code></pre></div>
-<p>Then trigger a check run webhook to see Forge re-evaluate CI with the skip applied.</p>
-<h2 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h2>
-<h3 id="snapshot-and-restore-checkpoints">Snapshot and Restore Checkpoints<a class="headerlink" href="#snapshot-and-restore-checkpoints" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Capture current workflow state</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>uv<span class="w"> </span>run<span class="w"> </span>forge<span class="w"> </span>snapshot<span class="w"> </span>--ticket<span class="w"> </span>PROJ-123
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Restore to a previous snapshot</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>uv<span class="w"> </span>run<span class="w"> </span>forge<span class="w"> </span>restore<span class="w"> </span>--ticket<span class="w"> </span>PROJ-123<span class="w"> </span>--snapshot<span class="w"> </span>snapshots/PROJ-123-2024-01-01.json
+<ul>
+<li>Reviewer spawns with <strong>no instructions</strong> (empty prompt)</li>
+<li>Uses the specified <code>max_retries</code> value</li>
+</ul>
+<h3 id="missing-frontmatter">Missing Frontmatter<a class="headerlink" href="#missing-frontmatter" title="Permanent link">&para;</a></h3>
+<p>A file without <code>---</code> delimiters:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Review the code for bugs and style issues.
 </code></pre></div>
-<h3 id="inspect-redis-state">Inspect Redis State<a class="headerlink" href="#inspect-redis-state" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>redis-cli<span class="w"> </span>-p<span class="w"> </span><span class="m">6380</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># List all workflow checkpoints</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>KEYS<span class="w"> </span>forge:checkpoint:*
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># View a specific checkpoint</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>GET<span class="w"> </span>forge:checkpoint:PROJ-123
+<ul>
+<li>Entire file content becomes reviewer instructions</li>
+<li>Uses default <code>max_retries: 3</code> (or env var if set)</li>
+</ul>
+<h3 id="malformed-yaml">Malformed YAML<a class="headerlink" href="#malformed-yaml" title="Permanent link">&para;</a></h3>
+<p>If the frontmatter contains invalid YAML:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>---
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="gu">max_retries: &quot;not a number&quot;</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="gu">---</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>Instructions here...
 </code></pre></div>
-<h3 id="worker-logs">Worker Logs<a class="headerlink" href="#worker-logs" title="Permanent link">&para;</a></h3>
-<p>The worker logs each node execution with the ticket key and node name. Use these to trace where a workflow stopped:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>uv<span class="w"> </span>run<span class="w"> </span>forge<span class="w"> </span>worker<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;PROJ-123&quot;</span>
+<ul>
+<li>A warning is logged</li>
+<li>Default <code>max_retries</code> is used</li>
+<li>Prose body is still extracted and used as instructions</li>
+</ul>
+<h3 id="no-reviewmd-found">No review.md Found<a class="headerlink" href="#no-reviewmd-found" title="Permanent link">&para;</a></h3>
+<p>If no <code>review.md</code> exists in either the project or default skill directory:</p>
+<ul>
+<li><strong>No reviewer is spawned</strong> — the skill output is accepted without review</li>
+<li>This is the expected behavior for skills that don't require review</li>
+</ul>
+<h2 id="review-cycle-output">Review Cycle Output<a class="headerlink" href="#review-cycle-output" title="Permanent link">&para;</a></h2>
+<p>Each review cycle writes its results to:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>.forge/{step-name}/review_cycle_N.json
 </code></pre></div>
-<p>See the <a href="../../developer-guide/#10-debugging-tools">Developer Guide</a> for patching checkpoints directly and other advanced debugging tools.</p>
+<p>Where:
+- <code>{step-name}</code> is the workflow step (e.g., <code>implement_task</code>, <code>local_code_review</code>)
+- <code>N</code> is the 1-indexed cycle number</p>
+<p><strong>Example:</strong> <code>.forge/implement_task/review_cycle_1.json</code></p>
+<p><strong>JSON schema:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">&quot;cycle&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">&quot;max_cycles&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">&quot;verdict&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;rejected&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="nt">&quot;feedback&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Missing test coverage for edge case...&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">&quot;skill&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;local-code-review&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">&quot;elapsed_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">45.2</span><span class="p">,</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-01-15T10:30:00Z&quot;</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cycle</code></td>
+<td><code>int</code></td>
+<td>Current cycle number (1-indexed)</td>
+</tr>
+<tr>
+<td><code>max_cycles</code></td>
+<td><code>int</code></td>
+<td>Maximum cycles allowed (from <code>max_retries + 1</code>)</td>
+</tr>
+<tr>
+<td><code>verdict</code></td>
+<td><code>string</code></td>
+<td><code>"approved"</code> or <code>"rejected"</code></td>
+</tr>
+<tr>
+<td><code>feedback</code></td>
+<td><code>string</code></td>
+<td>Reviewer feedback (empty string if approved)</td>
+</tr>
+<tr>
+<td><code>skill</code></td>
+<td><code>string</code></td>
+<td>Name of the skill that performed the review</td>
+</tr>
+<tr>
+<td><code>elapsed_seconds</code></td>
+<td><code>float</code></td>
+<td>Time taken for this review cycle</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>string</code></td>
+<td>ISO 8601 UTC timestamp of cycle completion</td>
+</tr>
+</tbody>
+</table>
+<h2 id="validation-summary">Validation Summary<a class="headerlink" href="#validation-summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>File missing</td>
+<td>No reviewer spawned</td>
+</tr>
+<tr>
+<td>File empty</td>
+<td>Reviewer spawns with no instructions, default retries</td>
+</tr>
+<tr>
+<td>No frontmatter</td>
+<td>Entire content used as instructions, default retries</td>
+</tr>
+<tr>
+<td>Empty frontmatter</td>
+<td>Prose used as instructions, default retries</td>
+</tr>
+<tr>
+<td>Malformed YAML</td>
+<td>Warning logged, prose used, default retries</td>
+</tr>
+<tr>
+<td>Invalid <code>max_retries</code> type</td>
+<td>Warning logged, default used</td>
+</tr>
+<tr>
+<td>Unknown frontmatter fields</td>
+<td>Silently ignored</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../skills/authoring/">Authoring Skills</a> — how to create and customize skills</li>
+<li><a href="../config/">Configuration</a> — environment variables including <code>AUTO_REVIEW_MAX_RETRIES</code></li>
+</ul>
 
 
 
